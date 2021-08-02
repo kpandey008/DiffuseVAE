@@ -7,7 +7,8 @@ import torchvision.transforms as T
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 
-from models.vae import VAE
+# from models.vae import VAE
+from models.vae_v2 import VAE
 from util import get_dataset
 
 
@@ -16,7 +17,20 @@ logger = logging.getLogger(__name__)
 
 @click.command()
 @click.argument("root")
-@click.option("--code-size", default=1024, type=int)
+@click.option(
+    "--enc-block-config",
+    default="128x1,128d2,128t64,64x3,64d2,64t32,32x3,32d2,32t16,16x7,16d2,16t8,8x3,8d2,8t4,4x3,4d4,4t1,1x2",
+)
+@click.option(
+    "--enc-channel-config", default="128:64,64:64,32:128,16:128,8:256,4:512,1:1024"
+)
+@click.option(
+    "--dec-block-config",
+    default="1x1,1u4,1t4,4x2,4u2,4t8,8x2,8u2,8t16,16x6,16u2,16t32,32x2,32u2,32t64,64x2,64u2,64t128,128x1",
+)
+@click.option(
+    "--dec-channel-config", default="128:64,64:64,32:128,16:128,8:256,4:512,1:1024"
+)
 @click.option("--batch-size", default=16)
 @click.option("--epochs", default=1000)
 @click.option("--image-size", default=128)
@@ -25,13 +39,14 @@ logger = logging.getLogger(__name__)
 @click.option("--log-step", default=1)
 @click.option("--device", default="gpu", type=click.Choice(["cpu", "gpu", "tpu"]))
 @click.option("--dataset", default="celeba-hq")
-@click.option("--subsample-size", default=None)
+@click.option("--subsample-size", default=None)  # Integrate this!
 @click.option("--chkpt-interval", default=1)
 @click.option("--optimizer", default="Adam")
-@click.option("--sample-interval", default=100)
+@click.option("--sample-interval", default=100)  # Integrate this!
 @click.option("--restore-path", default=None)
 @click.option("--results-dir", default=os.getcwd())
 def train(root, **kwargs):
+    print(kwargs)
     # Transforms
     image_size = kwargs.get("image_size")
     assert image_size in [128, 256, 512]
@@ -62,8 +77,14 @@ def train(root, **kwargs):
 
     # Model
     lr = kwargs.get("lr")
-    enc_kwargs = {"code_size": kwargs.get("code_size")}
-    vae = VAE(lr=lr, enc_kwargs=enc_kwargs)
+    vae = VAE(
+        kwargs.get("enc_block_config"),
+        kwargs.get("dec_block_config"),
+        kwargs.get("enc_channel_config"),
+        kwargs.get("dec_channel_config"),
+        lr=lr,
+        alpha=1.0,
+    )
 
     # Trainer
     train_kwargs = {}

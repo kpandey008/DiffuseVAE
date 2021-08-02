@@ -15,6 +15,7 @@ class CelebADataset(Dataset):
         root,
         subsample_size=None,
         transform=None,
+        **kwargs
     ):
         if not os.path.isdir(root):
             raise ValueError(f"The specified root: {root} does not exist")

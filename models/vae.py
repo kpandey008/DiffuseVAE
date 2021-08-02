@@ -1,6 +1,7 @@
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 class ResBlock(nn.Module):
@@ -18,6 +19,34 @@ class ResBlock(nn.Module):
         out = self.conv(input)
         out += input
 
+        return out
+
+
+class ResBlockv2(nn.Module):
+    def __init__(
+        self,
+        in_width,
+        middle_width,
+        out_width,
+        down_rate=None,
+        residual=True,
+    ):
+        super().__init__()
+        self.down_rate = down_rate
+        self.residual = residual
+        self.c1 = nn.Conv2d(in_width, middle_width, 1, bias=False)
+        self.c2 = nn.Conv2d(middle_width, middle_width, 3, bias=False)
+        self.c3 = nn.Conv2d(middle_width, middle_width, 3, bias=False)
+        self.c4 = nn.Conv2d(middle_width, out_width, 1, bias=False)
+
+    def forward(self, x):
+        xhat = self.c1(F.gelu(x))
+        xhat = self.c2(F.gelu(xhat))
+        xhat = self.c3(F.gelu(xhat))
+        xhat = self.c4(F.gelu(xhat))
+        out = x + xhat if self.residual else xhat
+        if self.down_rate is not None:
+            out = F.avg_pool2d(out, kernel_size=self.down_rate, stride=self.down_rate)
         return out
 
 
@@ -129,8 +158,8 @@ class VAE(pl.LightningModule):
         mse_loss = nn.MSELoss(reduction="sum")
         recons_loss = mse_loss(decoder_out, x)
         kl_loss = self.compute_kl(mu, logvar)
-        self.log("Recons Loss", recons_loss)
-        self.log("Kl Loss", kl_loss)
+        self.log("Recons Loss", recons_loss, prog_bar=True)
+        self.log("Kl Loss", kl_loss, prog_bar=True)
 
         total_loss = recons_loss + self.alpha * kl_loss
         self.log("Total Loss", total_loss)
