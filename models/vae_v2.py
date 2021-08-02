@@ -231,6 +231,13 @@ class VAE(pl.LightningModule):
         decoder_out = self.decode(z)
         return decoder_out
 
+    def forward_recons(self, x):
+        # For generating reconstructions during inference
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
+        decoder_out = self.decode(z)
+        return decoder_out
+
     def training_step(self, batch, batch_idx):
         x = batch
 
