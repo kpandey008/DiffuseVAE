@@ -4,7 +4,7 @@ import models.backbone.resnet as backbone_models
 import torch
 
 from PIL import Image
-from datasets import CelebADataset, CelebAMaskHQDataset
+from datasets import CelebADataset, CelebAMaskHQDataset, ReconstructionDataset
 
 
 logger = logging.getLogger(__name__)
@@ -53,6 +53,8 @@ def get_dataset(name, root, **kwargs):
         dataset = CelebADataset(root, **kwargs)
     elif name == "celeba-hq":
         dataset = CelebAMaskHQDataset(root, **kwargs)
+    elif name == "recons":
+        dataset = ReconstructionDataset(root, **kwargs)
     else:
         raise NotImplementedError(
             f"The dataset {name} does not exist in our datastore."
