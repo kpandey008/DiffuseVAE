@@ -8,7 +8,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 
 # from models.vae import VAE
-from models.vae_v2 import VAE
+from models.vae import VAE
 from util import get_dataset
 
 
