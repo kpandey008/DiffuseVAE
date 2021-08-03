@@ -1,3 +1,4 @@
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -67,9 +68,11 @@ class OutConv(nn.Module):
         return self.conv(x)
 
 
-class UNet(nn.Module):
-    def __init__(self):
-        super(UNet, self).__init__()
+class UNet(pl.LightningModule):
+    def __init__(self, lr=1e-4):
+        super().__init__()
+        self.lr = lr
+
         self.inc = DoubleConv(3, 64)
         self.down1 = Down(64, 128)
         self.down2 = Down(128, 256)
@@ -93,6 +96,21 @@ class UNet(nn.Module):
         x = self.up4(x, x1)
         logits = self.outc(x)
         return torch.sigmoid(logits)
+
+    def training_step(self, batch, batch_idx):
+        recons, img = batch
+        preds = self(recons)
+
+        # Compute loss
+        l1_loss = nn.L1Loss(reduction="mean")
+        recons_loss = l1_loss(preds, img)
+        self.log("Recons Loss", recons_loss, prog_bar=True)
+
+        return recons_loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
 
 
 if __name__ == "__main__":
