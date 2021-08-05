@@ -1,4 +1,5 @@
 import click
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import torch
@@ -8,6 +9,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 from models.vae import VAE
+from models.unet import UNet
 from util import get_dataset, save_as_images, configure_device
 
 
@@ -16,30 +18,75 @@ def cli():
     pass
 
 
+def compare_samples(gen, refined, save_path=None, figsize=(6, 3)):
+    # Plot all the quantities
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+    ax[0].imshow(gen.permute(1, 2, 0))
+    ax[0].set_title("VAE Reconstruction")
+    ax[0].axis("off")
+
+    ax[1].imshow(refined.permute(1, 2, 0))
+    ax[1].set_title("Refined Image")
+    ax[1].axis("off")
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, pad_inches=0)
+
+
 @cli.command()
-@click.argument("chkpt-path")
+@click.argument("vae-chkpt-path")
+@click.argument("refine-chkpt-path")
 @click.option("--num-samples", default=16)
 @click.option("--z-dim", default=1024)
 @click.option("--save-path", default=os.getcwd())
-def sample(chkpt_path, num_samples=16, z_dim=1024, save_path=os.getcwd()):
-    vae = VAE.load_from_checkpoint(chkpt_path)
+@click.option("--compare", default=True)
+def sample_combined(
+    vae_chkpt_path,
+    refine_chkpt_path,
+    num_samples=16,
+    z_dim=1024,
+    save_path=os.getcwd(),
+    compare=True,
+):
+    vae = VAE.load_from_checkpoint(vae_chkpt_path)
     vae.eval()
+
+    unet = UNet.load_from_checkpoint(refine_chkpt_path)
+    unet.eval()
 
     # Sample z
     N = min(num_samples, 16)
     num_iters = num_samples // N  # For very large samples
-    sample_list = []
+    combined_sample_list = []
+    vae_sample_list = []
     for _ in range(num_iters):
 
         z = torch.randn(num_samples, z_dim, 1, 1)
         with torch.no_grad():
-            recons = vae(z).squeeze()
-        sample_list.append(recons)
+            vae_recons = vae(z)
+            recons = unet(vae_recons)
+        vae_sample_list.append(vae_recons)
+        combined_sample_list.append(recons)
 
-    cat_output = torch.cat(sample_list, dim=0)
+    cat_vae_output = torch.cat(vae_sample_list, dim=0)
+    cat_combined_output = torch.cat(combined_sample_list, dim=0)
     output_dir = os.path.splitext(save_path)[0]
-    os.makedirs(output_dir)
-    save_as_images(cat_output, output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Save Samples
+    save_as_images(cat_vae_output, os.path.join(output_dir, "vae"))
+    save_as_images(cat_combined_output, os.path.join(output_dir, "combined"))
+
+    if compare:
+        save_dir = os.path.join(output_dir, "compare")
+        os.makedirs(save_dir, exist_ok=True)
+        # Save a comparison of all images
+        for idx, (gen, refined) in enumerate(zip(cat_vae_output, cat_combined_output)):
+            compare_samples(
+                gen,
+                refined,
+                save_path=os.path.join(save_dir, f"compare_{idx}.png"),
+            )
 
 
 # TODO: Check how to perform Multi-GPU inference
@@ -109,9 +156,6 @@ def reconstruct(
 
     cat_img = torch.cat(img_list, dim=0).numpy()
     cat_sample = torch.cat(sample_list, dim=0).numpy()
-
-    print(cat_img.shape)
-    print(cat_sample.shape)
 
     # Save the image and reconstructions as numpy arrays
     os.makedirs(save_path, exist_ok=True)
