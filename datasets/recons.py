@@ -18,8 +18,9 @@ class ReconstructionDataset(Dataset):
         if subsample_size is not None:
             # To enable deterministic samples set a random seed at
             # a global level
-            self.images = self.images[:subsample_size]
-            self.recons = self.recons[:subsample_size]
+            inds = np.random.choice(np.arange(self.images.shape[0]))
+            self.images = self.images[:inds]
+            self.recons = self.recons[:inds]
 
         assert self.images.shape[0] == self.recons.shape[0]
 
