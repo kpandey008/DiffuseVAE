@@ -33,6 +33,83 @@ def compare_samples(gen, refined, save_path=None, figsize=(6, 3)):
         plt.savefig(save_path, dpi=300, pad_inches=0)
 
 
+def plot_interpolations(interpolations, save_path=None, figsize=(10, 5)):
+    N = len(interpolations)
+    # Plot all the quantities
+    fig, ax = plt.subplots(nrows=1, ncols=N, figsize=figsize)
+
+    for i, inter in enumerate(interpolations):
+        ax[i].imshow(inter.permute(1, 2, 0))
+        ax[i].axis("off")
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, pad_inches=0)
+
+
+def compare_interpolations(
+    interpolations_1, interpolations_2, save_path=None, figsize=(10, 2)
+):
+    assert len(interpolations_1) == len(interpolations_2)
+    N = len(interpolations_1)
+    # Plot all the quantities
+    fig, ax = plt.subplots(nrows=2, ncols=N, figsize=figsize)
+
+    for i, (inter_1, inter_2) in enumerate(zip(interpolations_1, interpolations_2)):
+        ax[0, i].imshow(inter_1.permute(1, 2, 0))
+        ax[0, i].axis("off")
+
+        ax[1, i].imshow(inter_2.permute(1, 2, 0))
+        ax[1, i].axis("off")
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, pad_inches=0)
+
+
+@cli.command()
+@click.argument("vae-chkpt-path")
+@click.argument("refine-chkpt-path")
+@click.option("--n-steps", default=10)
+@click.option("--z-dim", default=1024)
+@click.option("--save-path", default=os.getcwd())
+def interpolate(
+    vae_chkpt_path,
+    refine_chkpt_path,
+    n_steps=10,
+    z_dim=1024,
+    save_path=os.getcwd(),
+):
+    vae = VAE.load_from_checkpoint(vae_chkpt_path)
+    vae.eval()
+
+    unet = UNet.load_from_checkpoint(refine_chkpt_path)
+    unet.eval()
+
+    # Sample z
+    z_1 = torch.randn(1, z_dim, 1, 1)
+    z_2 = torch.randn(1, z_dim, 1, 1)
+
+    # interpolate
+    lam = np.linspace(0, 1, num=n_steps)
+    vae_interpolations = []
+    combined_interpolations = []
+    for l in lam:
+        z_inter = z_1 * (l) + z_2 * (1 - l)
+
+        # Forward pass through VAE
+        with torch.no_grad():
+            x_inter_vae = vae(z_inter)
+            x_inter_combined = unet(x_inter_vae)
+        vae_interpolations.append(x_inter_vae.squeeze())
+        combined_interpolations.append(x_inter_combined.squeeze())
+
+    os.makedirs(save_path, exist_ok=True)
+    compare_interpolations(
+        vae_interpolations,
+        combined_interpolations,
+        save_path=os.path.join(save_path, "combined_inter.png"),
+    )
+
+
 @cli.command()
 @click.argument("vae-chkpt-path")
 @click.argument("refine-chkpt-path")
