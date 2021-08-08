@@ -2,7 +2,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 
-from unet import UNet
+from .unet import UNet
 
 from tqdm import tqdm
 
@@ -35,10 +35,9 @@ class DDPM(pl.LightningModule):
             )
 
     def compute_noisy_input(self, x, eps, t):
-        return (
-            x * torch.sqrt(self.alpha_bar[t])[:, None, None, None]
-            + eps * torch.sqrt(1 - self.alpha_bar[t])[:, None, None, None]
-        )
+        return x * torch.sqrt(self.alpha_bar[t])[:, None, None, None].to(
+            x.device
+        ) + eps * torch.sqrt(1 - self.alpha_bar[t])[:, None, None, None].to(x.device)
 
     def forward(self, x_t):
         # The sampling process goes here!
@@ -60,7 +59,7 @@ class DDPM(pl.LightningModule):
         x = batch
 
         # Sample timepoints
-        t = torch.randint(0, self.T, size=(x.size(0),))
+        t = torch.randint(0, self.T, size=(x.size(0),), device=x.device)
 
         # Sample noise
         eps = torch.randn_like(x)
@@ -71,6 +70,7 @@ class DDPM(pl.LightningModule):
 
         # Compute loss
         loss = self.criterion(eps, eps_pred)
+        self.log("loss", loss)
         return loss
 
     def configure_optimizers(self):
