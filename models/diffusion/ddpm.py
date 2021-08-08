@@ -8,13 +8,14 @@ from tqdm import tqdm
 
 
 class DDPM(pl.LightningModule):
-    def __init__(self, decoder, beta_1=1e-4, beta_2=0.02, T=1000):
+    def __init__(self, decoder, beta_1=1e-4, beta_2=0.02, T=1000, lr=1e-4):
         super().__init__()
         self.decoder = decoder
         self.T = T
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.criterion = nn.MSELoss()
+        self.lr = lr
 
         # Precompute alpha_t for all t values
         self.betas = torch.linspace(self.beta_1, self.beta_2, self.T)
