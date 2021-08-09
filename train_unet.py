@@ -7,7 +7,8 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
 
 from models.unet import UNet
-from util import get_dataset
+from models.unet_big import UNet as BigUNet
+from util import get_dataset, configure_device
 
 
 logger = logging.getLogger(__name__)
@@ -15,20 +16,19 @@ logger = logging.getLogger(__name__)
 
 @click.command()
 @click.argument("root")
-@click.option("--batch-size", default=16)
+@click.option("--batch-size", default=64)
 @click.option("--epochs", default=1000)
-@click.option("--workers", default=2)
-@click.option("--lr", default=1e-4)
+@click.option("--workers", default=4)
+@click.option("--lr", default=3e-5, type=float)
 @click.option("--log-step", default=1)
-@click.option("--device", default="gpu", type=click.Choice(["cpu", "gpu", "tpu"]))
-@click.option("--subsample-size", default=None)  # Integrate this!
+@click.option("--device", default="gpu:1")
 @click.option("--chkpt-interval", default=1)
 @click.option("--optimizer", default="Adam")
 @click.option("--sample-interval", default=100)  # Integrate this!
 @click.option("--restore-path", default=None)
 @click.option("--results-dir", default=os.getcwd())
+@click.option("--model", default="big")
 def train(root, **kwargs):
-    print(kwargs)
     # Dataset
     dataset = get_dataset("recons", root)
     N = len(dataset)
@@ -47,7 +47,10 @@ def train(root, **kwargs):
 
     # Model
     lr = kwargs.get("lr")
-    unet = UNet(lr=lr)
+    if kwargs.get("model") == "big":
+        unet = BigUNet(lr=lr)
+    else:
+        unet = UNet(lr=lr)
 
     # Trainer
     train_kwargs = {}
@@ -62,6 +65,7 @@ def train(root, **kwargs):
         dirpath=os.path.join(results_dir, "checkpoints"),
         filename="unet-{epoch:02d}-{train_loss:.2f}",
         every_n_epochs=kwargs.get("chkpt_interval", 10),
+        save_on_train_epoch_end=True,
     )
 
     train_kwargs["default_root_dir"] = results_dir
@@ -70,8 +74,14 @@ def train(root, **kwargs):
     train_kwargs["callbacks"] = [chkpt_callback]
 
     device = kwargs.get("device")
-    if device == "gpu":
-        train_kwargs["gpus"] = [1]
+    if device.startswith("gpu"):
+        _, devs = configure_device(device)
+        train_kwargs["gpus"] = devs
+
+        # Disable find_unused_parameters when using DDP training for performance reasons
+        from pytorch_lightning.plugins import DDPPlugin
+
+        train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
     elif device == "tpu":
         train_kwargs["tpu_cores"] = 8
 
