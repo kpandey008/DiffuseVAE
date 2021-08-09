@@ -85,8 +85,11 @@ class Up(nn.Module):
     def __init__(self, in_channels, out_channels, t_embed_dim):
         super().__init__()
         self.up = nn.Upsample(scale_factor=2, mode="nearest")
-        self.r_block = ResidualBlock(
+        self.block1 = ResidualBlock(
             in_channels, out_channels, t_embed_dim, mid_channels=in_channels // 2
+        )
+        self.block2 = ResidualBlock(
+            out_channels, out_channels, t_embed_dim, mid_channels=out_channels // 2
         )
 
     def forward(self, x1, x2, t_embed):
@@ -97,7 +100,9 @@ class Up(nn.Module):
 
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2])
         x = torch.cat([x2, x1], dim=1)
-        return self.r_block(x, t_embed)
+        x = self.block1(x, t_embed)
+        x = self.block2(x, t_embed)
+        return x
 
 
 class OutConv(nn.Module):
