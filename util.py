@@ -17,7 +17,10 @@ def configure_device(device):
                 "CUDA support is not available on your platform. Re-run using CPU or TPU mode"
             )
         gpu_id = device.split(":")[-1]
-        return f"cuda:{gpu_id}"
+        if gpu_id == "":
+            # Use all GPU's
+            gpu_id = "-1"
+        return f"cuda:{gpu_id}", gpu_id
     elif device == "tpu":
         if _xla_available:
             return xm.xla_device()
