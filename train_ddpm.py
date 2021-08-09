@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 
 from models.diffusion.ddpm import DDPM
 from models.diffusion.unet import UNet
-from util import get_dataset
+from util import configure_device, get_dataset
 
 
 logger = logging.getLogger(__name__)
@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 @click.option("--epochs", default=1000)
 @click.option("--image-size", default=128)
 @click.option("--workers", default=4)
-@click.option("--lr", default=1e-4)
+@click.option("--lr", default=2e-5)
 @click.option("--log-step", default=1)
-@click.option("--device", default="gpu", type=click.Choice(["cpu", "gpu", "tpu"]))
+@click.option("--device", default="gpu:0")
 @click.option("--dataset", default="celeba-hq")
 @click.option("--subsample-size", default=None)  # Integrate this!
 @click.option("--chkpt-interval", default=1)
@@ -36,7 +36,6 @@ logger = logging.getLogger(__name__)
 @click.option("--restore-path", default=None)
 @click.option("--results-dir", default=os.getcwd())
 def train(root, **kwargs):
-    print(kwargs)
     # Transforms
     image_size = kwargs.get("image_size")
     assert image_size in [128, 256, 512]
@@ -64,6 +63,7 @@ def train(root, **kwargs):
         pin_memory=True,
         shuffle=True,
         drop_last=True,
+        persistent_workers=True,
     )
 
     # Model
@@ -86,10 +86,10 @@ def train(root, **kwargs):
 
     results_dir = kwargs.get("results_dir")
     chkpt_callback = ModelCheckpoint(
-        monitor="loss",
         dirpath=os.path.join(results_dir, "checkpoints"),
         filename="ddpm-{epoch:02d}-{loss:.2f}",
         every_n_epochs=kwargs.get("chkpt_interval", 10),
+        save_on_train_epoch_end=True,
     )
 
     train_kwargs["default_root_dir"] = results_dir
@@ -98,8 +98,14 @@ def train(root, **kwargs):
     train_kwargs["callbacks"] = [chkpt_callback]
 
     device = kwargs.get("device")
-    if device == "gpu":
-        train_kwargs["gpus"] = [1]
+    if device.startswith("gpu"):
+        _, devs = configure_device(device)
+        train_kwargs["gpus"] = devs
+
+        # Disable find_unused_parameters when using DDP training for performance reasons
+        from pytorch_lightning.plugins import DDPPlugin
+
+        train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
     elif device == "tpu":
         train_kwargs["tpu_cores"] = 8
 
