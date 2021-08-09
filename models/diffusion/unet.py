@@ -65,11 +65,17 @@ class Down(nn.Module):
     def __init__(self, in_channels, out_channels, t_embed_dim):
         super().__init__()
         self.down = nn.MaxPool2d(2)
-        self.r_block = ResidualBlock(in_channels, out_channels, t_embed_dim)
+        self.block1 = ResidualBlock(
+            in_channels, out_channels, t_embed_dim, mid_channels=in_channels // 2
+        )
+        self.block2 = ResidualBlock(
+            out_channels, out_channels, t_embed_dim, mid_channels=out_channels // 2
+        )
 
     def forward(self, x, t_embed):
         x = self.down(x)
-        x = self.r_block(x, t_embed)
+        x = self.block1(x, t_embed)
+        x = self.block2(x, t_embed)
         return x
 
 
@@ -104,7 +110,7 @@ class OutConv(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, t_embed_dim):
+    def __init__(self, t_embed_dim, n_heads=4):
         super().__init__()
         self.time_mlp = nn.Sequential(
             SinusoidalPosEmb(t_embed_dim),
@@ -121,12 +127,22 @@ class UNet(nn.Module):
         self.down2 = Down(128, 256, t_embed_dim)
         self.down3 = Down(256, 512, t_embed_dim)
         self.down4 = Down(512, 512, t_embed_dim)
+        self.down5 = Down(512, 512, t_embed_dim)
+
+        self.down_attn = nn.MultiheadAttention(
+            512, n_heads, dropout=0.1, batch_first=True
+        )
 
         # Up blocks
-        self.up1 = Up(1024, 256, t_embed_dim)
-        self.up2 = Up(512, 128, t_embed_dim)
-        self.up3 = Up(256, 64, t_embed_dim)
-        self.up4 = Up(128, 64, t_embed_dim)
+        self.up1 = Up(1024, 512, t_embed_dim)
+        self.up2 = Up(1024, 256, t_embed_dim)
+        self.up3 = Up(512, 128, t_embed_dim)
+        self.up4 = Up(256, 64, t_embed_dim)
+        self.up5 = Up(128, 64, t_embed_dim)
+
+        self.up_attn = nn.MultiheadAttention(
+            256, n_heads, dropout=0.1, batch_first=True
+        )
 
         # Final conv
         self.outc = OutConv(64, 3)
@@ -140,18 +156,36 @@ class UNet(nn.Module):
         x2 = self.down1(x1, t_embed)
         x3 = self.down2(x2, t_embed)
         x4 = self.down3(x3, t_embed)
+
+        # Attention here!
+        B, C, H, W = x4.shape
+        q = x4.view(B, H * W, C)
+        x4, _ = self.down_attn(q, q, q)
+        x4 = x4.view(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+
+        # Resume downsampling
         x5 = self.down4(x4, t_embed)
+        x6 = self.down5(x5, t_embed)
 
         # Upsampling with concat
-        x = self.up1(x5, x4, t_embed)
-        x = self.up2(x, x3, t_embed)
-        x = self.up3(x, x2, t_embed)
-        x = self.up4(x, x1, t_embed)
+        x = self.up1(x6, x5, t_embed)
+        x = self.up2(x, x4, t_embed)
+
+        # Attention here!
+        B, C, H, W = x.shape
+        q = x.view(B, H * W, C)
+        x, _ = self.up_attn(q, q, q)
+        x = x.view(B, C, H, W)
+
+        # Resume upsampling
+        x = self.up3(x, x3, t_embed)
+        x = self.up4(x, x2, t_embed)
+        x = self.up5(x, x1, t_embed)
         return self.outc(x)
 
 
 if __name__ == "__main__":
-    sample = torch.randn(1, 3, 128, 128)
+    sample = torch.randn(4, 3, 128, 128)
     unet = UNet(64)
     out = unet(sample, t=torch.tensor([1]))
     print(out.shape)
