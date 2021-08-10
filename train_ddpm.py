@@ -21,20 +21,20 @@ logger = logging.getLogger(__name__)
 @click.option("--beta1", default=1e-4, type=float)
 @click.option("--beta2", default=0.02, type=float)
 @click.option("--n-steps", default=1000)
+@click.option("--fp16", default=False)
 @click.option("--batch-size", default=32)
 @click.option("--epochs", default=1000)
-@click.option("--image-size", default=128)
 @click.option("--workers", default=4)
-@click.option("--lr", default=2e-5)
 @click.option("--log-step", default=1)
 @click.option("--device", default="gpu:0")
-@click.option("--dataset", default="celeba-hq")
-@click.option("--subsample-size", default=None)  # Integrate this!
 @click.option("--chkpt-interval", default=1)
 @click.option("--optimizer", default="Adam")
 @click.option("--sample-interval", default=100)  # Integrate this!
 @click.option("--restore-path", default=None)
 @click.option("--results-dir", default=os.getcwd())
+@click.option("--dataset", default="celeba-hq")
+@click.option("--image-size", default=128)
+@click.option("--subsample-size", default=None)  # Integrate this!
 def train(root, **kwargs):
     # Transforms
     image_size = kwargs.get("image_size")
@@ -108,6 +108,10 @@ def train(root, **kwargs):
         train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
     elif device == "tpu":
         train_kwargs["tpu_cores"] = 8
+
+    # Half precision training
+    if kwargs.get("fp16"):
+        train_kwargs["precision"] = 16
 
     logger.info(f"Running Trainer with kwargs: {train_kwargs}")
     trainer = pl.Trainer(**train_kwargs)
