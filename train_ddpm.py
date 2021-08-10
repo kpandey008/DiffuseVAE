@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 @click.option("--device", default="gpu:0")
 @click.option("--chkpt-interval", default=1)
 @click.option("--optimizer", default="Adam")
+@click.option("--lr", default=2e-5)
 @click.option("--sample-interval", default=100)  # Integrate this!
 @click.option("--restore-path", default=None)
 @click.option("--results-dir", default=os.getcwd())
