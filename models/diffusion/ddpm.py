@@ -23,22 +23,25 @@ class DDPM(pl.LightningModule):
         alphas = 1 - betas
         alpha_bar = np.cumprod(alphas)
         alpha_bar_shifted = np.append(1.0, alpha_bar[:-1])
-
         sigma_t = betas * (1.0 - alpha_bar_shifted) / (1.0 - alpha_bar)
 
+        # Convert to torch tensors
         self.betas = torch.from_numpy(betas)
         self.alphas = torch.from_numpy(alphas)
         self.alpha_bar = torch.from_numpy(alpha_bar)
         self.alpha_bar_shifted = torch.from_numpy(alpha_bar_shifted)
         self.sigma_t = torch.from_numpy(sigma_t)
 
+        # Flag to keep track of device settings
         self.const_dev_set = False
 
     def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True):
         t_ = torch.full((x_t.size(0),), t, device=x_t.device, dtype=torch.long)
         # Generate the reconstruction from x_t
         x_recons = (
-            x_t - self.decoder(x_t, t_) * torch.sqrt(1 - self.alpha_bar[t])[:, None, None, None]
+            x_t
+            - self.decoder(x_t, t_)
+            * torch.sqrt(1 - self.alpha_bar[t])[:, None, None, None]
         ) / torch.sqrt(self.alpha_bar[t])[:, None, None, None]
 
         # Clip
@@ -46,8 +49,16 @@ class DDPM(pl.LightningModule):
             x_recons.clamp_(-1.0, 1.0)
 
         # Compute posterior mean from the reconstruction
-        a_1 = torch.sqrt(self.alpha_bar_shifted[t]) * self.betas[t] / (1 - self.alpha_bar[t])
-        a_2 = torch.sqrt(self.alphas[t]) * (1 - self.alpha_bar_shifted[t]) / (1 - self.alpha_bar[t])
+        a_1 = (
+            torch.sqrt(self.alpha_bar_shifted[t])
+            * self.betas[t]
+            / (1 - self.alpha_bar[t])
+        )
+        a_2 = (
+            torch.sqrt(self.alphas[t])
+            * (1 - self.alpha_bar_shifted[t])
+            / (1 - self.alpha_bar[t])
+        )
         post_mean = a_1[:, None, None, None] * x_recons + a_2[:, None, None, None] * x_t
         post_variance = self.sigma_t[t][:, None, None, None]
         return post_mean, post_variance

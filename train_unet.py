@@ -61,9 +61,9 @@ def train(root, **kwargs):
 
     results_dir = kwargs.get("results_dir")
     chkpt_callback = ModelCheckpoint(
-        monitor="Recons Loss",
+        # monitor="Recons Loss",
         dirpath=os.path.join(results_dir, "checkpoints"),
-        filename="unet-{epoch:02d}-{train_loss:.2f}",
+        filename="unet-{epoch:02d}-{train_loss:.4f}",
         every_n_epochs=kwargs.get("chkpt_interval", 10),
         save_on_train_epoch_end=True,
     )
