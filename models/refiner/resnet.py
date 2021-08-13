@@ -1,7 +1,6 @@
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from models import backbone
-
 
 from models.backbone import resnet as resnet_models
 
@@ -47,7 +46,7 @@ class ResnetBlock(nn.Module):
         return h + self.res_conv(x)
 
 
-class ResnetRefiner(nn.Module):
+class ResnetRefiner(pl.LightningModule):
     def __init__(
         self,
         backbone="resnet50",
@@ -57,9 +56,12 @@ class ResnetRefiner(nn.Module):
         n_heads=4,
         dropout=0,
         dec_ch_mult=(2, 2, 2, 2),
+        lr=1e-4,
         **kwargs,
     ):
         super().__init__()
+        self.save_hyperparameters()
+
         assert backbone in SUPPORTED_BACKBONES
         assert output_stride in [8, 16, 32]
         replace_stride_with_dilation = [False, False, False]
@@ -99,6 +101,8 @@ class ResnetRefiner(nn.Module):
         # Final conv
         self.out_conv = nn.Conv2d(dim_out, 3, 3, padding=1)
 
+        self.lr = lr
+
     def forward(self, x):
         identity = x
         x = self.backbone.conv1(x)
@@ -128,7 +132,22 @@ class ResnetRefiner(nn.Module):
         out = self.out_conv(x)
 
         assert out.size() == identity.size()
-        return out
+        return torch.sigmoid(out)
+
+    def training_step(self, batch, batch_idx):
+        recons, img = batch
+        preds = self(recons)
+
+        # Compute loss
+        l1_loss = nn.L1Loss(reduction="mean")
+        recons_loss = l1_loss(preds, img)
+        self.log("Recons Loss", recons_loss, prog_bar=True)
+
+        return recons_loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
 
 
 if __name__ == "__main__":

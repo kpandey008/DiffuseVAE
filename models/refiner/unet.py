@@ -71,6 +71,7 @@ class OutConv(nn.Module):
 class UNet(pl.LightningModule):
     def __init__(self, lr=1e-4):
         super().__init__()
+        self.save_hyperparameters()
         self.lr = lr
 
         self.inc = DoubleConv(3, 64)
