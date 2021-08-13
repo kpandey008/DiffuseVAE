@@ -75,6 +75,7 @@ class ResnetRefiner(pl.LightningModule):
             replace_stride_with_dilation=replace_stride_with_dilation,
             **kwargs,
         )
+        del self.backbone.fc
 
         out_ch = OUT_CH[backbone]
 
