@@ -124,16 +124,6 @@ def train_resnet(root, **kwargs):
     batch_size = kwargs.get("batch_size")
     batch_size = min(N, batch_size)
 
-    # Loader
-    loader = DataLoader(
-        dataset,
-        batch_size,
-        num_workers=kwargs.get("workers"),
-        pin_memory=True,
-        shuffle=True,
-        drop_last=True,
-    )
-
     # Model
     refiner = ResnetRefiner(
         backbone=kwargs.get("backbone"),
@@ -164,6 +154,7 @@ def train_resnet(root, **kwargs):
     train_kwargs["callbacks"] = [chkpt_callback]
 
     device = kwargs.get("device")
+    loader_kws = {}
     if device.startswith("gpu"):
         _, devs = configure_device(device)
         train_kwargs["gpus"] = devs
@@ -172,12 +163,24 @@ def train_resnet(root, **kwargs):
         from pytorch_lightning.plugins import DDPPlugin
 
         train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
+        loader_kws["persistent_workers"] = True
     elif device == "tpu":
         train_kwargs["tpu_cores"] = 8
 
     # Half precision training
     if kwargs.get("fp16"):
         train_kwargs["precision"] = 16
+
+    # Loader
+    loader = DataLoader(
+        dataset,
+        batch_size,
+        num_workers=kwargs.get("workers"),
+        pin_memory=True,
+        shuffle=True,
+        drop_last=True,
+        **loader_kws
+    )
 
     logger.info(f"Running Trainer with kwargs: {train_kwargs}")
     trainer = pl.Trainer(**train_kwargs)
