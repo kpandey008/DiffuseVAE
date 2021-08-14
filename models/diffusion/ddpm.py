@@ -3,7 +3,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 
-from unet import Unet
+from models.diffusion.unet import Unet
 
 from tqdm import tqdm
 
@@ -29,10 +29,12 @@ class DDPM(pl.LightningModule):
 
     def setup_precomputed_const(self, dev):
         # Main
-        self.betas = torch.linspace(self.beta_1, self.beta_2, self.T, device=dev)
+        self.betas = torch.linspace(self.beta_1, self.beta_2, steps=self.T, device=dev)
         self.alphas = 1 - self.betas
         self.alpha_bar = torch.cumprod(self.alphas, dim=0)
-        self.alpha_bar_shifted = torch.cat([torch.tensor([1.0]), self.alpha_bar[:-1]])
+        self.alpha_bar_shifted = torch.cat(
+            [torch.tensor([1.0], device=dev), self.alpha_bar[:-1]]
+        )
 
         # Posterior covariance of the forward process
         self.post_variance = (
@@ -97,13 +99,12 @@ class DDPM(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x = batch
-        dev = x.device
         if not self.setup_consts:
-            self.setup_precomputed_const(dev)
+            self.setup_precomputed_const(self.device)
             self.setup_consts = True
 
         # Sample timepoints
-        t = torch.randint(0, self.T, size=(x.size(0),), device=dev)
+        t = torch.randint(0, self.T, size=(x.size(0),), device=self.device)
 
         # Sample noise
         eps = torch.randn_like(x)

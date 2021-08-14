@@ -72,7 +72,7 @@ def train(root, **kwargs):
     # Model
     # TODO: EMA is not yet setup. In the original paper they have used EMA!
     lr = kwargs.get("lr")
-    attn_resolutions = __parse_str(kwargs.get("attn-resolutions"))
+    attn_resolutions = __parse_str(kwargs.get("attn_resolutions"))
     dim_mults = __parse_str(kwargs.get("dim_mults"))
     assert len(attn_resolutions) == len(dim_mults)
     decoder = Unet(
@@ -87,7 +87,7 @@ def train(root, **kwargs):
         decoder,
         beta_1=kwargs.get("beta1"),
         beta_2=kwargs.get("beta2"),
-        T=kwargs.get("n_steps"),
+        T=kwargs.get("n_timesteps"),
         lr=lr,
     )
 
