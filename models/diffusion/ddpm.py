@@ -14,15 +14,13 @@ def extract(a, t, x_shape):
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
 
 
-class DDPM(pl.LightningModule):
-    def __init__(self, decoder, beta_1=1e-4, beta_2=0.02, T=1000, lr=1e-4):
+class DDPM(nn.Module):
+    def __init__(self, decoder, beta_1=1e-4, beta_2=0.02, T=1000):
         super().__init__()
         self.decoder = decoder
         self.T = T
         self.beta_1 = beta_1
         self.beta_2 = beta_2
-        self.criterion = nn.L1Loss()
-        self.lr = lr
 
         # Flag to keep track of device settings
         self.setup_consts = False
@@ -73,7 +71,7 @@ class DDPM(pl.LightningModule):
         post_variance = extract(self.post_variance, t_, x_t.shape)
         return post_mean, post_variance
 
-    def forward(self, x_t):
+    def sample(self, x_t):
         # The sampling process goes here!
         x = x_t
 
@@ -97,40 +95,25 @@ class DDPM(pl.LightningModule):
             self.minus_sqrt_alpha_bar, t, x_start.shape
         )
 
-    def training_step(self, batch, batch_idx):
-        x = batch
+    def forward(self, x, eps, t):
         if not self.setup_consts:
             self.setup_precomputed_const(self.device)
             self.setup_consts = True
 
-        # Sample timepoints
-        t = torch.randint(0, self.T, size=(x.size(0),), device=self.device)
-
-        # Sample noise
-        eps = torch.randn_like(x)
-
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t)
-        eps_pred = self.decoder(x_t, t)
-
-        # Compute loss
-        loss = self.criterion(eps, eps_pred)
-        self.log("loss", loss)
-        return loss
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return optimizer
+        return self.decoder(x_t, t)
 
 
 if __name__ == "__main__":
     decoder = Unet(64)
     ddpm = DDPM(decoder)
+    t = torch.randint(0, 1000, size=(4,))
     sample = torch.randn(4, 3, 128, 128)
-    loss = ddpm.training_step(sample, 1)
+    loss = ddpm(sample, torch.randn_like(sample), t)
     print(loss)
 
     # Test sampling
     x_t = torch.randn(4, 3, 128, 128)
-    samples = ddpm(x_t)
+    samples = ddpm.sample(x_t)
     print(samples.shape)

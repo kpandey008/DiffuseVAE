@@ -1,17 +1,17 @@
 import click
+import copy
 import logging
 import os
 import pytorch_lightning as pl
-from torch.random import seed
 import torchvision.transforms as T
 
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
-from torchvision.transforms.transforms import RandomHorizontalFlip
 
 from models.diffusion.ddpm import DDPM
 from models.diffusion.unet import Unet
+from models.diffusion.wrapper import DDPMWrapper, BYOLMAWeightUpdate
 from util import configure_device, get_dataset
 
 
@@ -36,6 +36,7 @@ def __parse_str(s):
 @click.option("--n-timesteps", default=1000)
 @click.option("--fp16", default=False)
 @click.option("--seed", default=0)
+@click.option("--ema-decay", default=0.9999, type=float)
 @click.option("--batch-size", default=32)
 @click.option("--epochs", default=1000)
 @click.option("--log-step", default=1)
@@ -94,8 +95,8 @@ def train(root, **kwargs):
         beta_1=kwargs.get("beta1"),
         beta_2=kwargs.get("beta2"),
         T=kwargs.get("n_timesteps"),
-        lr=lr,
     )
+    ddpm_wrapper = DDPMWrapper(ddpm, copy.deepcopy(ddpm), lr=lr)
 
     # Trainer
     train_kwargs = {}
@@ -104,6 +105,7 @@ def train(root, **kwargs):
         # Restore checkpoint
         train_kwargs["resume_from_checkpoint"] = restore_path
 
+    # Setup callbacks
     results_dir = kwargs.get("results_dir")
     chkpt_callback = ModelCheckpoint(
         dirpath=os.path.join(results_dir, "checkpoints"),
@@ -112,10 +114,12 @@ def train(root, **kwargs):
         save_on_train_epoch_end=True,
     )
 
+    ema_callback = BYOLMAWeightUpdate(initial_tau=kwargs.get("ema_decay"))
+
     train_kwargs["default_root_dir"] = results_dir
     train_kwargs["max_epochs"] = kwargs.get("epochs")
     train_kwargs["log_every_n_steps"] = kwargs.get("log_step")
-    train_kwargs["callbacks"] = [chkpt_callback]
+    train_kwargs["callbacks"] = [chkpt_callback, ema_callback]
 
     device = kwargs.get("device")
     loader_kws = {}
@@ -148,7 +152,7 @@ def train(root, **kwargs):
 
     logger.info(f"Running Trainer with kwargs: {train_kwargs}")
     trainer = pl.Trainer(**train_kwargs)
-    trainer.fit(ddpm, train_dataloader=loader)
+    trainer.fit(ddpm_wrapper, train_dataloader=loader)
 
 
 if __name__ == "__main__":
