@@ -2,9 +2,11 @@ import click
 import logging
 import os
 import pytorch_lightning as pl
+from torch.random import seed
 import torchvision.transforms as T
 
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 from torchvision.transforms.transforms import RandomHorizontalFlip
 
@@ -33,6 +35,7 @@ def __parse_str(s):
 @click.option("--beta2", default=0.02, type=float)
 @click.option("--n-timesteps", default=1000)
 @click.option("--fp16", default=False)
+@click.option("--seed", default=0)
 @click.option("--batch-size", default=32)
 @click.option("--epochs", default=1000)
 @click.option("--log-step", default=1)
@@ -49,6 +52,9 @@ def __parse_str(s):
 @click.option("--workers", default=4)
 @click.option("--subsample-size", default=None)  # Integrate this!
 def train(root, **kwargs):
+    # Set seed
+    seed_everything(kwargs.get("seed"))
+
     # Transforms
     image_size = kwargs.get("image_size")
     assert image_size in [128, 256, 512]
