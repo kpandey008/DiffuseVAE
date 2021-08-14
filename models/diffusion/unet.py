@@ -162,7 +162,7 @@ class Unet(nn.Module):
         self.up_modules = nn.ModuleDict()
         u_in_dim = 2 * mid_in_dim  # Due to concat
         up_dim_mults = [1] + self.dim_mults[:-1]
-        for idx in reversed(range(len(up_dim_mults))):
+        for idx in reversed(range(len(up_dim_mults) + 1)):
             # Add residual blocks for the current resolution
             res_modules = nn.ModuleList()
             for i in range(self.n_residual_blocks):
