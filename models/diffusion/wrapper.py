@@ -93,7 +93,9 @@ class DDPMWrapper(pl.LightningModule):
         x = batch
 
         # Sample timepoints
-        t = torch.randint(0, self.T, size=(x.size(0),), device=self.device)
+        t = torch.randint(
+            0, self.online_network.T, size=(x.size(0),), device=self.device
+        )
 
         # Sample noise
         eps = torch.randn_like(x)

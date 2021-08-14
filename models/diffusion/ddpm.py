@@ -97,7 +97,7 @@ class DDPM(nn.Module):
 
     def forward(self, x, eps, t):
         if not self.setup_consts:
-            self.setup_precomputed_const(self.device)
+            self.setup_precomputed_const(x.device)
             self.setup_consts = True
 
         # Predict noise
