@@ -1,8 +1,6 @@
 import math
-from models.refiner.unet import UNet
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class Upsample(nn.Module):
