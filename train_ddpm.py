@@ -58,7 +58,6 @@ def train(root, **kwargs):
 
     # Transforms
     image_size = kwargs.get("image_size")
-    assert image_size in [128, 256, 512]
     transforms = T.Compose(
         [
             T.Resize(image_size),
