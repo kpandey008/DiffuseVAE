@@ -121,13 +121,13 @@ class Unet(nn.Module):
 
         # Downsampling
         self.in_conv = nn.Conv2d(self.channels, self.dim, 3, padding=1, stride=1)
-        self.down_modules = {}
+        self.down_modules = nn.ModuleDict()
         d_in_dim = self.dim
         for idx, (attn, ch_mul) in enumerate(
             zip(self.attn_resolutions, self.dim_mults)
         ):
             # Add residual blocks for the current resolution
-            res_modules = []
+            res_modules = nn.ModuleList()
             for i in range(self.n_residual_blocks):
                 res_in_dim = d_in_dim if i == 0 else ch_mul * self.dim
                 res_modules.append(
@@ -145,7 +145,7 @@ class Unet(nn.Module):
                     )
             if idx != len(self.dim_mults) - 1:
                 res_modules.append(Downsample(ch_mul * self.dim))
-            self.down_modules[idx] = res_modules
+            self.down_modules[f"{idx}"] = res_modules
 
             # Update the input channels for the next resolution
             d_in_dim = ch_mul * self.dim
@@ -161,12 +161,12 @@ class Unet(nn.Module):
         )
 
         # Upsampling
-        self.up_modules = {}
+        self.up_modules = nn.ModuleDict()
         u_in_dim = 2 * mid_in_dim  # Due to concat
         up_dim_mults = [1] + self.dim_mults[:-1]
         for idx in reversed(range(len(up_dim_mults))):
             # Add residual blocks for the current resolution
-            res_modules = []
+            res_modules = nn.ModuleList()
             for i in range(self.n_residual_blocks):
                 res_in_dim = u_in_dim if i == 0 else up_dim_mults[idx] * self.dim
                 res_modules.append(
@@ -186,7 +186,7 @@ class Unet(nn.Module):
                     )
             if idx != len(self.dim_mults) - 1:
                 res_modules.append(Upsample(up_dim_mults[idx] * self.dim))
-            self.up_modules[idx] = res_modules
+            self.up_modules[f"{idx}"] = res_modules
 
             # Update the input channels for the next resolution
             u_in_dim = 2 * up_dim_mults[idx] * self.dim
