@@ -33,7 +33,7 @@ class Block(nn.Module):
     def __init__(self, dim, dim_out, groups=8, dropout=0):
         super().__init__()
         self.block = nn.Sequential(
-            nn.GroupNorm(groups, dim_out),
+            nn.GroupNorm(groups, dim),
             nn.SiLU(),
             nn.Dropout(p=dropout),
             nn.Conv2d(dim, dim_out, 3, padding=1),
@@ -128,10 +128,11 @@ class Unet(nn.Module):
         ):
             # Add residual blocks for the current resolution
             res_modules = []
-            for _ in range(self.n_residual_blocks):
+            for i in range(self.n_residual_blocks):
+                res_in_dim = d_in_dim if i == 0 else ch_mul * self.dim
                 res_modules.append(
                     ResnetBlock(
-                        d_in_dim,
+                        res_in_dim,
                         ch_mul * self.dim,
                         self.dim,
                         dropout=self.dropout,
@@ -162,29 +163,33 @@ class Unet(nn.Module):
         # Upsampling
         self.up_modules = {}
         u_in_dim = 2 * mid_in_dim  # Due to concat
-        for idx in reversed(range(len(self.dim_mults))):
+        up_dim_mults = [1] + self.dim_mults[:-1]
+        for idx in reversed(range(len(up_dim_mults))):
             # Add residual blocks for the current resolution
             res_modules = []
-            for _ in range(self.n_residual_blocks):
+            for i in range(self.n_residual_blocks):
+                res_in_dim = u_in_dim if i == 0 else up_dim_mults[idx] * self.dim
                 res_modules.append(
                     ResnetBlock(
-                        u_in_dim,
-                        self.dim_mults[idx] * dim,
-                        dim,
+                        res_in_dim,
+                        up_dim_mults[idx] * self.dim,
+                        self.dim,
                         dropout=self.dropout,
                         num_groups=self.groups,
                     )
                 )
                 if self.attn_resolutions[idx]:
                     res_modules.append(
-                        nn.MultiheadAttention(self.dim_mults[idx] * dim, self.n_heads)
+                        nn.MultiheadAttention(
+                            up_dim_mults[idx] * self.dim, self.n_heads
+                        )
                     )
-            if idx != 0:
-                res_modules.append(Upsample(self.dim_mults[idx] * dim))
+            if idx != len(self.dim_mults) - 1:
+                res_modules.append(Upsample(up_dim_mults[idx] * self.dim))
             self.up_modules[idx] = res_modules
 
             # Update the input channels for the next resolution
-            u_in_dim = 2 * self.dim_mults[idx] * dim
+            u_in_dim = 2 * up_dim_mults[idx] * self.dim
 
         self.final_conv = Block(self.dim, self.out_dim)
 
@@ -200,39 +205,42 @@ class Unet(nn.Module):
                     # Reshape and attend!
                     b, c, h, w = x.size()
                     x = x.view(h * w, b, c)
-                    x_attn = d_mod(x)
+                    x_attn, _ = d_mod(x, x, x)
                     x = x_attn.view(b, c, h, w)
+                    continue
+
+                if isinstance(d_mod, ResnetBlock):
+                    x = d_mod(x, t)
                     continue
 
                 # Else continue
                 x = d_mod(x)
-            # Store the output of this resolution for concat
             down_outputs[res] = x
 
-        print(x.shape)
-
         # Middle bottleneck and attention
-        x = self.mid_block1(x)
+        x = self.mid_block1(x, t)
         b, c, h, w = x.size()
         x = x.view(h * w, b, c)
-        x_attn = self.mid_attn(x)
+        x_attn, _ = self.mid_attn(x, x, x)
         x = x_attn.view(b, c, h, w)
 
-        x = self.mid_block2(x)
-
-        print(x.shape)
+        x = self.mid_block2(x, t)
 
         # Upsample
         for res, u_mod_list in self.up_modules.items():
             d_x = down_outputs[res]
-            x = torch.cat([x, d_x], dim=0)
+            x = torch.cat([x, d_x], dim=1)
             for u_mod in u_mod_list:
-                if isinstance(d_mod, nn.MultiheadAttention):
+                if isinstance(u_mod, nn.MultiheadAttention):
                     # Reshape and attend!
                     b, c, h, w = x.size()
                     x = x.view(h * w, b, c)
-                    x_attn = u_mod(x)
+                    x_attn, _ = u_mod(x, x, x)
                     x = x_attn.view(b, c, h, w)
+                    continue
+
+                if isinstance(u_mod, ResnetBlock):
+                    x = u_mod(x, t)
                     continue
 
                 # Else continue
@@ -243,7 +251,12 @@ class Unet(nn.Module):
 
 
 if __name__ == "__main__":
-    unet = Unet(64, attn_resolutions=[0, 0, 0, 1, 0], dim_mults=[1, 1, 2, 2, 4])
+    unet = Unet(
+        128,
+        attn_resolutions=[0, 0, 0, 1, 0],
+        dim_mults=[1, 1, 2, 2, 4],
+        n_residual_blocks=2,
+    )
     sample = torch.randn(1, 3, 128, 128)
-    out = unet(sample)
+    out = unet(sample, torch.tensor([1]))
     print(out.shape)
