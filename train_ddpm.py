@@ -53,7 +53,7 @@ def __parse_str(s):
 @click.option("--subsample-size", default=None)  # Integrate this!
 def train(root, **kwargs):
     # Set seed
-    seed_everything(kwargs.get("seed"))
+    seed_everything(kwargs.get("seed"), workers=True)
 
     # Transforms
     image_size = kwargs.get("image_size")
