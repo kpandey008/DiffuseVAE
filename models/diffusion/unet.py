@@ -162,10 +162,10 @@ class Unet(nn.Module):
         self.up_modules = nn.ModuleDict()
         u_in_dim = 2 * mid_in_dim  # Due to concat
         up_dim_mults = [1] + self.dim_mults[:-1]
-        for idx in reversed(range(len(up_dim_mults) + 1)):
+        for idx in reversed(range(len(up_dim_mults))):
             # Add residual blocks for the current resolution
             res_modules = nn.ModuleList()
-            for i in range(self.n_residual_blocks):
+            for i in range(self.n_residual_blocks + 1):
                 res_in_dim = u_in_dim if i == 0 else up_dim_mults[idx] * self.dim
                 res_modules.append(
                     ResnetBlock(
