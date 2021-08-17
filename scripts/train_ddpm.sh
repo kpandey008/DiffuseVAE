@@ -1,0 +1,23 @@
+python train_ddpm.py --dim 256 \
+                    --attn-resolutions "0,0,1,0" \
+                    --n-residual 1 \
+                    --dim-mults "1,2,3,4" \
+                    --dropout 0 \
+                    --n-heads 4 \
+                    --beta1 1e-4 \
+                    --beta2 0.02 \
+                    --n-timesteps 1000 \
+                    --fp16 True \
+                    --ema-decay 0.9999 \
+                    --batch-size 32 \
+                    --epochs 2000 \
+                    --device gpu:0,1 \
+                    --lr 1e-4 \
+                    --flip False \
+                    --results-dir /data/kushagrap20/ddpm_64 \
+                    --image-size 64 \
+                    --workers 8 \
+                    --seed 0 \
+                    --dataset 'celeba-hq' \
+                    --restore-path '/data/kushagrap20/ddpm_64/checkpoints/ddpm-epoch=11-loss=0.0339.ckpt' \
+                    /data/kushagrap20/datasets/CelebAMask-HQ

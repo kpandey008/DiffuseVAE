@@ -36,6 +36,7 @@ def __parse_str(s):
 @click.option("--n-timesteps", default=1000)
 @click.option("--fp16", default=False)
 @click.option("--seed", default=0)
+@click.option("--use-ema", default=True)
 @click.option("--ema-decay", default=0.9999, type=float)
 @click.option("--batch-size", default=32)
 @click.option("--epochs", default=1000)
@@ -76,7 +77,6 @@ def train(root, **kwargs):
     batch_size = min(N, batch_size)
 
     # Model
-    # TODO: EMA is not yet setup. In the original paper they have used EMA!
     lr = kwargs.get("lr")
     attn_resolutions = __parse_str(kwargs.get("attn_resolutions"))
     dim_mults = __parse_str(kwargs.get("dim_mults"))
@@ -113,12 +113,14 @@ def train(root, **kwargs):
         save_on_train_epoch_end=True,
     )
 
-    ema_callback = BYOLMAWeightUpdate(initial_tau=kwargs.get("ema_decay"))
-
     train_kwargs["default_root_dir"] = results_dir
     train_kwargs["max_epochs"] = kwargs.get("epochs")
     train_kwargs["log_every_n_steps"] = kwargs.get("log_step")
-    train_kwargs["callbacks"] = [chkpt_callback, ema_callback]
+    train_kwargs["callbacks"] = [chkpt_callback]
+
+    if kwargs.get("use_ema"):
+        ema_callback = BYOLMAWeightUpdate(initial_tau=kwargs.get("ema_decay"))
+        train_kwargs["callbacks"].append(ema_callback)
 
     device = kwargs.get("device")
     loader_kws = {}
@@ -129,7 +131,7 @@ def train(root, **kwargs):
         # Disable find_unused_parameters when using DDP training for performance reasons
         from pytorch_lightning.plugins import DDPPlugin
 
-        train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
+        train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=True)
         loader_kws["persistent_workers"] = True
     elif device == "tpu":
         train_kwargs["tpu_cores"] = 8
