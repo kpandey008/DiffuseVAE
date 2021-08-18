@@ -78,7 +78,7 @@ class BYOLMAWeightUpdate(Callback):
 
 
 class DDPMWrapper(pl.LightningModule):
-    def __init__(self, online_network, target_network, lr=2e-5, loss="l2"):
+    def __init__(self, online_network, target_network, lr=2e-5, loss="l1"):
         super().__init__()
         assert loss in ["l1", "l2"]
         self.online_network = online_network
