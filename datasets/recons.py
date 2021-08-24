@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import torch
 
 from torch.utils.data import Dataset
 
@@ -25,12 +26,11 @@ class ReconstructionDataset(Dataset):
         assert self.images.shape[0] == self.recons.shape[0]
 
     def __getitem__(self, idx):
-        img = self.images[idx]
-        recons = self.recons[idx]
+        img = torch.from_numpy(self.images[idx])
+        recons = torch.from_numpy(self.recons[idx])
         if self.transform is not None:
             img = self.transform(img)
             recons = self.transform(recons)
-
         return recons, img
 
     def __len__(self):
