@@ -78,9 +78,12 @@ class BYOLMAWeightUpdate(Callback):
 
 
 class DDPMWrapper(pl.LightningModule):
-    def __init__(self, online_network, target_network, lr=2e-5, loss="l1"):
+    def __init__(
+        self, online_network, target_network, lr=2e-5, loss="l1", sample_from="target"
+    ):
         super().__init__()
         assert loss in ["l1", "l2"]
+        self.sample_from = sample_from
         self.online_network = online_network
         self.target_network = target_network
 
@@ -88,6 +91,9 @@ class DDPMWrapper(pl.LightningModule):
         self.lr = lr
 
     def forward(self, x):
+        # Sample from the target network
+        if self.sample_from == "target":
+            return self.target_network.sample(x)
         return self.online_network.sample(x)
 
     def training_step(self, batch, batch_idx):
