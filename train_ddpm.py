@@ -10,7 +10,13 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
-from models.diffusion import DDPM, UNetModel, DDPMWrapper, BYOLMAWeightUpdate
+from models.diffusion import (
+    DDPM,
+    UNetModel,
+    DDPMWrapper,
+    BYOLMAWeightUpdate,
+    SuperResModel,
+)
 from util import configure_device, get_dataset
 
 
@@ -51,25 +57,30 @@ def __parse_str(s):
 @click.option("--flip", default=False)
 @click.option("--image-size", default=128)
 @click.option("--workers", default=4)
+@click.option("--use-cond", default=True, type=bool)
 @click.option("--subsample-size", default=None)  # Integrate this!
 def train(root, **kwargs):
     # Set seed
     seed_everything(kwargs.get("seed"), workers=True)
 
-    # Transforms
-    image_size = kwargs.get("image_size")
-    transforms = T.Compose(
-        [
-            T.Resize(image_size),
-            T.RandomHorizontalFlip() if kwargs.get("flip") else T.Lambda(lambda t: t),
-            T.CenterCrop(image_size),
-            T.ToTensor(),
-            T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ]
-    )
-
-    # Dataset
+    # Dataset and transforms
     d_type = kwargs.get("dataset")
+    image_size = kwargs.get("image_size")
+
+    if d_type == "recons":
+        transforms = T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    else:
+        transforms = T.Compose(
+            [
+                T.Resize(image_size),
+                T.RandomHorizontalFlip()
+                if kwargs.get("flip")
+                else T.Lambda(lambda t: t),
+                T.CenterCrop(image_size),
+                T.ToTensor(),
+                T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
+            ]
+        )
     dataset = get_dataset(d_type, root, transform=transforms)
     N = len(dataset)
     batch_size = kwargs.get("batch_size")
@@ -79,7 +90,10 @@ def train(root, **kwargs):
     lr = kwargs.get("lr")
     attn_resolutions = __parse_str(kwargs.get("attn_resolutions"))
     dim_mults = __parse_str(kwargs.get("dim_mults"))
-    decoder = UNetModel(
+
+    # Use the superres model for conditional training
+    decoder_cls = UNetModel if not kwargs.get("use_cond") else SuperResModel
+    decoder = decoder_cls(
         in_channels=3,
         model_channels=kwargs.get("dim"),
         out_channels=3,
@@ -90,6 +104,7 @@ def train(root, **kwargs):
         dropout=kwargs.get("dropout"),
         num_heads=kwargs.get("n_heads"),
     )
+
     ddpm = DDPM(
         decoder,
         beta_1=kwargs.get("beta1"),

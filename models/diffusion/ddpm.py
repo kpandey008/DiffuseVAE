@@ -95,14 +95,14 @@ class DDPM(nn.Module):
             self.minus_sqrt_alpha_bar, t, x_start.shape
         )
 
-    def forward(self, x, eps, t):
+    def forward(self, x, eps, t, low_res=None):
         if not self.setup_consts:
             self.setup_precomputed_const(x.device)
             self.setup_consts = True
 
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t)
-        return self.decoder(x_t, t)
+        return self.decoder(x_t, t, low_res=low_res)
 
 
 if __name__ == "__main__":

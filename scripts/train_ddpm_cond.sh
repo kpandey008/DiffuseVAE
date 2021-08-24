@@ -12,12 +12,13 @@ python train_ddpm.py --dim 128 \
                     --ema-decay 0.9999 \
                     --batch-size 8 \
                     --epochs 2000 \
-                    --device gpu:0,1 \
+                    --device gpu:0,1,2,3 \
                     --lr 2e-5 \
                     --flip False \
                     --results-dir /data/kushagrap20/ddpm_128 \
                     --image-size 128 \
                     --workers 8 \
                     --seed 0 \
-                    --dataset 'celeba-hq' \
-                    /data/kushagrap20/datasets/CelebAMask-HQ
+                    --dataset 'recons' \
+                    --use-cond True \
+                    /data/kushagrap20/vaedm/reconstructions/
