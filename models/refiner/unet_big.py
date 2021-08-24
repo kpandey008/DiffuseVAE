@@ -95,9 +95,9 @@ class OutConv(nn.Module):
 
 
 class UNet(pl.LightningModule):
-    def __init__(self, n_heads=4, lr=3e-5):
-        print(lr)
+    def __init__(self, n_heads=4, lr=1e-4):
         super().__init__()
+        self.save_hyperparameters()
 
         # Initial conv
         self.inc = nn.Conv2d(3, 64, 3, padding=1)

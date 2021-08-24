@@ -1,10 +1,77 @@
 import math
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
+
+class Upsample(nn.Module):
+    """Upsampling module using the interpolation and a conv module"""
+
+    def __init__(self, dim, mode="nearest"):
+        super().__init__()
+        self.upsample = nn.Upsample(scale_factor=2, mode=mode)
+        self.conv = nn.Conv2d(dim, dim, 3, padding=1, stride=1)
+
+    def forward(self, x):
+        x = self.upsample(x)
+        return self.conv(x)
+
+
+class Downsample(nn.Module):
+    """Downsampling block using strided convolutions"""
+
+    def __init__(self, dim):
+        super().__init__()
+        self.conv = nn.Conv2d(dim, dim, 3, stride=2, padding=1)
+
+    def forward(self, x):
+        return self.conv(x)
+
+
+class Block(nn.Module):
+    def __init__(self, dim, dim_out, groups=8, dropout=0):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.GroupNorm(groups, dim),
+            nn.SiLU(),
+            nn.Dropout(p=dropout),
+            nn.Conv2d(dim, dim_out, 3, padding=1),
+        )
+
+    def forward(self, x):
+        return self.block(x)
+
+
+class ResnetBlock(nn.Module):
+    """Residual block implementation as in original DDPM implementation"""
+
+    def __init__(self, in_dim, out_dim, t_embed_dim, dropout=0, num_groups=32):
+        super().__init__()
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.block1 = Block(in_dim, out_dim, dropout=dropout, groups=num_groups)
+        self.block2 = Block(out_dim, out_dim, dropout=dropout, groups=num_groups)
+
+        self.mlp = nn.Sequential(
+            nn.SiLU(),
+            nn.Linear(t_embed_dim, out_dim),
+        )
+        self.res_conv = (
+            nn.Conv2d(in_dim, out_dim, 1) if in_dim != out_dim else nn.Identity()
+        )
+
+    def forward(self, x, t_emb):
+        h = self.block1(x)
+
+        # Timestep embedding
+        h += self.mlp(t_emb)[:, :, None, None]
+
+        h = self.block2(h)
+        return h + self.res_conv(x)
 
 
 class SinusoidalPosEmb(nn.Module):
+    """Sinusoid embedding input to the DDPM denoiser"""
+
     def __init__(self, dim):
         super().__init__()
         self.dim = dim
@@ -19,178 +86,175 @@ class SinusoidalPosEmb(nn.Module):
         return emb
 
 
-class Block(nn.Module):
-    # A simple conv-bn-relu unit. Does not change the spatial size
-    def __init__(self, dim, dim_out):
+class Unet(nn.Module):
+    def __init__(
+        self,
+        dim,
+        out_dim=None,
+        attn_resolutions=[0, 0, 0, 1],
+        n_residual_blocks=1,
+        dim_mults=[1, 2, 4, 8],
+        groups=8,
+        channels=3,
+        dropout=0,
+        n_heads=1,
+    ):
         super().__init__()
-        self.block = nn.Sequential(
-            nn.Conv2d(dim, dim_out, 3, padding=1),
-            nn.BatchNorm2d(dim_out),
-            nn.ReLU(inplace=True),
-        )
+        self.dim = dim
+        self.channels = channels
+        self.out_dim = 3 if out_dim is None else out_dim
+        self.attn_resolutions = attn_resolutions
+        self.n_residual_blocks = n_residual_blocks
+        self.dim_mults = dim_mults
+        self.groups = groups
+        self.dropout = dropout
+        self.n_heads = n_heads
 
-    def forward(self, x):
-        return self.block(x)
-
-
-class ResidualBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, time_embed_dim, mid_channels=None):
-        super().__init__()
-        if not mid_channels:
-            mid_channels = out_channels
-
-        self.block1 = Block(in_channels, mid_channels)
-        self.block2 = Block(mid_channels, out_channels)
         self.time_mlp = nn.Sequential(
-            nn.Linear(time_embed_dim, mid_channels), nn.ReLU()
+            SinusoidalPosEmb(dim),
+            nn.Linear(dim, dim * 4),
+            nn.SiLU(),
+            nn.Linear(dim * 4, dim),
         )
-        self.residual_conv = nn.Conv2d(in_channels, out_channels, 1)
-
-    def forward(self, x, t_embed):
-        identity = x
-
-        # Block 1
-        embed = self.time_mlp(t_embed)
-        x = self.block1(x)
-        x = embed[:, :, None, None] + x
-
-        # Block 2
-        x = self.block2(x) + self.residual_conv(identity)
-        return x
-
-
-class Down(nn.Module):
-    """Downscaling with maxpool then double conv"""
-
-    def __init__(self, in_channels, out_channels, t_embed_dim):
-        super().__init__()
-        self.down = nn.MaxPool2d(2)
-        self.block1 = ResidualBlock(
-            in_channels, out_channels, t_embed_dim, mid_channels=in_channels // 2
-        )
-        self.block2 = ResidualBlock(
-            out_channels, out_channels, t_embed_dim, mid_channels=out_channels // 2
-        )
-
-    def forward(self, x, t_embed):
-        x = self.down(x)
-        x = self.block1(x, t_embed)
-        x = self.block2(x, t_embed)
-        return x
-
-
-class Up(nn.Module):
-    """Upscaling then double conv"""
-
-    def __init__(self, in_channels, out_channels, t_embed_dim):
-        super().__init__()
-        self.up = nn.Upsample(scale_factor=2, mode="nearest")
-        self.block1 = ResidualBlock(
-            in_channels, out_channels, t_embed_dim, mid_channels=in_channels // 2
-        )
-        self.block2 = ResidualBlock(
-            out_channels, out_channels, t_embed_dim, mid_channels=out_channels // 2
-        )
-
-    def forward(self, x1, x2, t_embed):
-        x1 = self.up(x1)
-        # input is CHW
-        diffY = x2.size()[2] - x1.size()[2]
-        diffX = x2.size()[3] - x1.size()[3]
-
-        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2])
-        x = torch.cat([x2, x1], dim=1)
-        x = self.block1(x, t_embed)
-        x = self.block2(x, t_embed)
-        return x
-
-
-class OutConv(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(OutConv, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-
-    def forward(self, x):
-        return self.conv(x)
-
-
-class UNet(nn.Module):
-    def __init__(self, t_embed_dim, n_heads=4):
-        super().__init__()
-        self.time_mlp = nn.Sequential(
-            SinusoidalPosEmb(t_embed_dim),
-            nn.Linear(t_embed_dim, t_embed_dim * 4),
-            nn.ReLU(),
-            nn.Linear(t_embed_dim * 4, t_embed_dim),
-        )
-
-        # Initial conv
-        self.inc = nn.Conv2d(3, 64, 3, padding=1)
-
-        # Down blocks
-        self.down1 = Down(64, 128, t_embed_dim)
-        self.down2 = Down(128, 256, t_embed_dim)
-        self.down3 = Down(256, 512, t_embed_dim)
-        self.down4 = Down(512, 512, t_embed_dim)
-        self.down5 = Down(512, 512, t_embed_dim)
-
-        self.down_attn = nn.MultiheadAttention(
-            512, n_heads, dropout=0.1, batch_first=True
-        )
-
-        # Up blocks
-        self.up1 = Up(1024, 512, t_embed_dim)
-        self.up2 = Up(1024, 256, t_embed_dim)
-        self.up3 = Up(512, 128, t_embed_dim)
-        self.up4 = Up(256, 64, t_embed_dim)
-        self.up5 = Up(128, 64, t_embed_dim)
-
-        self.up_attn = nn.MultiheadAttention(
-            256, n_heads, dropout=0.1, batch_first=True
-        )
-
-        # Final conv
-        self.outc = OutConv(64, 3)
-
-    def forward(self, x, t):
-        t_embed = self.time_mlp(t)
-
-        x1 = self.inc(x)
 
         # Downsampling
-        x2 = self.down1(x1, t_embed)
-        x3 = self.down2(x2, t_embed)
-        x4 = self.down3(x3, t_embed)
+        self.in_conv = nn.Conv2d(self.channels, self.dim, 3, padding=1, stride=1)
+        self.down_modules = nn.ModuleDict()
+        d_in_dim = self.dim
+        for idx, (attn, ch_mul) in enumerate(
+            zip(self.attn_resolutions, self.dim_mults)
+        ):
+            # Add residual blocks for the current resolution
+            res_modules = nn.ModuleList()
+            for i in range(self.n_residual_blocks):
+                res_in_dim = d_in_dim if i == 0 else ch_mul * self.dim
+                res_modules.append(
+                    ResnetBlock(
+                        res_in_dim,
+                        ch_mul * self.dim,
+                        self.dim,
+                        dropout=self.dropout,
+                        num_groups=self.groups,
+                    )
+                )
+                if attn:
+                    res_modules.append(
+                        nn.MultiheadAttention(ch_mul * self.dim, self.n_heads)
+                    )
+            if idx != len(self.dim_mults) - 1:
+                res_modules.append(Downsample(ch_mul * self.dim))
+            self.down_modules[f"{idx}"] = res_modules
 
-        # Attention here!
-        B, C, H, W = x4.shape
-        q = x4.view(B, H * W, C)
-        x4, _ = self.down_attn(q, q, q)
-        x4 = x4.view(B, H, W, C).permute(0, 3, 1, 2).contiguous()
+            # Update the input channels for the next resolution
+            d_in_dim = ch_mul * self.dim
 
-        # Resume downsampling
-        x5 = self.down4(x4, t_embed)
-        x6 = self.down5(x5, t_embed)
+        # Middle
+        mid_in_dim = self.dim * self.dim_mults[-1]
+        self.mid_block1 = ResnetBlock(
+            mid_in_dim, mid_in_dim, self.dim, num_groups=groups, dropout=self.dropout
+        )
+        self.mid_attn = nn.MultiheadAttention(mid_in_dim, self.n_heads)
+        self.mid_block2 = ResnetBlock(
+            mid_in_dim, mid_in_dim, self.dim, num_groups=groups, dropout=self.dropout
+        )
 
-        # Upsampling with concat
-        x = self.up1(x6, x5, t_embed)
-        x = self.up2(x, x4, t_embed)
+        # Upsampling
+        self.up_modules = nn.ModuleDict()
+        u_in_dim = 2 * mid_in_dim  # Due to concat
+        up_dim_mults = [1] + self.dim_mults[:-1]
+        for idx in reversed(range(len(up_dim_mults))):
+            # Add residual blocks for the current resolution
+            res_modules = nn.ModuleList()
+            for i in range(self.n_residual_blocks + 1):
+                res_in_dim = u_in_dim if i == 0 else up_dim_mults[idx] * self.dim
+                res_modules.append(
+                    ResnetBlock(
+                        res_in_dim,
+                        up_dim_mults[idx] * self.dim,
+                        self.dim,
+                        dropout=self.dropout,
+                        num_groups=self.groups,
+                    )
+                )
+                if self.attn_resolutions[idx]:
+                    res_modules.append(
+                        nn.MultiheadAttention(
+                            up_dim_mults[idx] * self.dim, self.n_heads
+                        )
+                    )
+            if idx != len(self.dim_mults) - 1:
+                res_modules.append(Upsample(up_dim_mults[idx] * self.dim))
+            self.up_modules[f"{idx}"] = res_modules
 
-        # Attention here!
-        B, C, H, W = x.shape
-        q = x.view(B, H * W, C)
-        x, _ = self.up_attn(q, q, q)
-        x = x.view(B, C, H, W)
+            # Update the input channels for the next resolution
+            u_in_dim = 2 * up_dim_mults[idx] * self.dim
 
-        # Resume upsampling
-        x = self.up3(x, x3, t_embed)
-        x = self.up4(x, x2, t_embed)
-        x = self.up5(x, x1, t_embed)
-        return self.outc(x)
+        self.final_conv = Block(self.dim, self.out_dim)
+
+    def forward(self, x, time):
+        t = self.time_mlp(time)
+
+        # Downsample
+        x = self.in_conv(x)
+        down_outputs = {}
+        for res, d_mod_list in self.down_modules.items():
+            for d_mod in d_mod_list:
+                if isinstance(d_mod, nn.MultiheadAttention):
+                    # Reshape and attend!
+                    b, c, h, w = x.size()
+                    x = x.view(h * w, b, c)
+                    x_attn, _ = d_mod(x, x, x)
+                    x = x_attn.view(b, c, h, w)
+                    continue
+
+                if isinstance(d_mod, ResnetBlock):
+                    x = d_mod(x, t)
+                    continue
+
+                # Else continue
+                x = d_mod(x)
+            down_outputs[res] = x
+
+        # Middle bottleneck and attention
+        x = self.mid_block1(x, t)
+        b, c, h, w = x.size()
+        x = x.view(h * w, b, c)
+        x_attn, _ = self.mid_attn(x, x, x)
+        x = x_attn.view(b, c, h, w)
+
+        x = self.mid_block2(x, t)
+
+        # Upsample
+        for res, u_mod_list in self.up_modules.items():
+            d_x = down_outputs[res]
+            x = torch.cat([x, d_x], dim=1)
+            for u_mod in u_mod_list:
+                if isinstance(u_mod, nn.MultiheadAttention):
+                    # Reshape and attend!
+                    b, c, h, w = x.size()
+                    x = x.view(h * w, b, c)
+                    x_attn, _ = u_mod(x, x, x)
+                    x = x_attn.view(b, c, h, w)
+                    continue
+
+                if isinstance(u_mod, ResnetBlock):
+                    x = u_mod(x, t)
+                    continue
+
+                # Else continue
+                x = u_mod(x)
+
+        # Final output
+        return self.final_conv(x)
 
 
 if __name__ == "__main__":
-    sample = torch.randn(4, 3, 128, 128)
-    unet = UNet(64)
-    out = unet(sample, t=torch.tensor([1]))
+    unet = Unet(
+        128,
+        attn_resolutions=[0, 0, 0, 1, 0],
+        dim_mults=[1, 1, 2, 2, 4],
+        n_residual_blocks=2,
+    )
+    sample = torch.randn(1, 3, 128, 128)
+    out = unet(sample, torch.tensor([1]))
     print(out.shape)

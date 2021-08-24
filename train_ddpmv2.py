@@ -1,3 +1,4 @@
+# Uses the openai Unet port
 import click
 import copy
 import logging
@@ -9,9 +10,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
-from models.diffusion.ddpm import DDPM
-from models.diffusion.unet import Unet
-from models.diffusion.wrapper import DDPMWrapper, BYOLMAWeightUpdate
+from models.diffusion import DDPM, UNetModel, DDPMWrapper, BYOLMAWeightUpdate
 from util import configure_device, get_dataset
 
 
@@ -20,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 def __parse_str(s):
     split = s.split(",")
-    return [int(s) for s in split]
+    return [int(s) for s in split if s != "" and s is not None]
 
 
 @click.command()
 @click.argument("root")
 @click.option("--dim", default=64)
-@click.option("--attn-resolutions", default="0,0,0,1")
+@click.option("--attn-resolutions", default="16,")
 @click.option("--n-residual", default=1)
 @click.option("--dim-mults", default="1,2,4,8")
 @click.option("--dropout", default=0)
@@ -80,14 +79,16 @@ def train(root, **kwargs):
     lr = kwargs.get("lr")
     attn_resolutions = __parse_str(kwargs.get("attn_resolutions"))
     dim_mults = __parse_str(kwargs.get("dim_mults"))
-    assert len(attn_resolutions) == len(dim_mults)
-    decoder = Unet(
-        dim=kwargs.get("dim"),
-        attn_resolutions=attn_resolutions,
-        n_residual_blocks=kwargs.get("n_residual"),
-        dim_mults=dim_mults,
+    decoder = UNetModel(
+        in_channels=3,
+        model_channels=kwargs.get("dim"),
+        out_channels=3,
+        num_res_blocks=kwargs.get("n_residual"),
+        attention_resolutions=attn_resolutions,
+        channel_mult=dim_mults,
+        use_checkpoint=False,
         dropout=kwargs.get("dropout"),
-        n_heads=kwargs.get("n_heads"),
+        num_heads=kwargs.get("n_heads"),
     )
     ddpm = DDPM(
         decoder,
@@ -95,7 +96,7 @@ def train(root, **kwargs):
         beta_2=kwargs.get("beta2"),
         T=kwargs.get("n_timesteps"),
     )
-    ddpm_wrapper = DDPMWrapper(ddpm, copy.deepcopy(ddpm), lr=lr)
+    ddpm_wrapper = DDPMWrapper(ddpm, copy.deepcopy(ddpm), lr=lr, loss="l1")
 
     # Trainer
     train_kwargs = {}
@@ -108,7 +109,7 @@ def train(root, **kwargs):
     results_dir = kwargs.get("results_dir")
     chkpt_callback = ModelCheckpoint(
         dirpath=os.path.join(results_dir, "checkpoints"),
-        filename="ddpm-{epoch:02d}-{loss:.4f}",
+        filename="ddpmv2-{epoch:02d}-{loss:.4f}",
         every_n_epochs=kwargs.get("chkpt_interval", 1),
         save_on_train_epoch_end=True,
     )
