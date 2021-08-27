@@ -79,25 +79,36 @@ class BYOLMAWeightUpdate(Callback):
 
 class DDPMWrapper(pl.LightningModule):
     def __init__(
-        self, online_network, target_network, lr=2e-5, loss="l1", sample_from="target"
+        self,
+        online_network,
+        target_network,
+        lr=2e-5,
+        loss="l1",
+        sample_from="target",
+        conditional=True,
     ):
         super().__init__()
         assert loss in ["l1", "l2"]
         self.sample_from = sample_from
+        self.conditional = conditional
         self.online_network = online_network
         self.target_network = target_network
 
         self.criterion = nn.MSELoss(reduction="mean") if loss == "l2" else nn.L1Loss()
         self.lr = lr
 
-    def forward(self, x):
-        # Sample from the target network
-        if self.sample_from == "target":
-            return self.target_network.sample(x)
-        return self.online_network.sample(x)
+    def forward(self, x, cond=None):
+        sample_nw = (
+            self.target_network if self.sample_from == "target" else self.online_network
+        )
+        return sample_nw.sample(x, cond=cond)
 
     def training_step(self, batch, batch_idx):
-        x = batch
+        cond = None
+        if self.conditional:
+            cond, x = batch
+        else:
+            x = batch
 
         # Sample timepoints
         t = torch.randint(
@@ -108,7 +119,7 @@ class DDPMWrapper(pl.LightningModule):
         eps = torch.randn_like(x)
 
         # Predict noise
-        eps_pred = self.online_network(x, eps, t)
+        eps_pred = self.online_network(x, eps, t, low_res=cond)
 
         # Compute loss
         loss = self.criterion(eps, eps_pred)

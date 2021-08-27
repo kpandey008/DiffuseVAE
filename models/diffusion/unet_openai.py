@@ -567,12 +567,8 @@ class SuperResModel(UNetModel):
 
     def forward(self, x, timesteps, low_res=None, **kwargs):
         _, _, new_height, new_width = x.shape
-        upsampled = F.interpolate(low_res, (new_height, new_width), mode="bilinear")
-        x = th.cat([x, upsampled], dim=1)
-        return super().forward(x, timesteps, **kwargs)
 
-    def get_feature_vectors(self, x, timesteps, low_res=None, **kwargs):
-        _, new_height, new_width, _ = x.shape
-        upsampled = F.interpolate(low_res, (new_height, new_width), mode="bilinear")
-        x = th.cat([x, upsampled], dim=1)
-        return super().get_feature_vectors(x, timesteps, **kwargs)
+        if low_res is not None:
+            upsampled = F.interpolate(low_res, (new_height, new_width), mode="nearest")
+            x = th.cat([x, upsampled], dim=1)
+        return super().forward(x, timesteps, **kwargs)

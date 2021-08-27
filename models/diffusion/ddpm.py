@@ -51,12 +51,13 @@ class DDPM(nn.Module):
             / (1 - self.alpha_bar)
         )
 
-    def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True):
+    def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True, cond=None):
         t_ = torch.full((x_t.size(0),), t, device=x_t.device, dtype=torch.long)
         # Generate the reconstruction from x_t
         x_recons = (
             x_t
-            - self.decoder(x_t, t_) * extract(self.minus_sqrt_alpha_bar, t_, x_t.shape)
+            - self.decoder(x_t, t_, low_res=cond)
+            * extract(self.minus_sqrt_alpha_bar, t_, x_t.shape)
         ) / extract(self.sqrt_alpha_bar, t_, x_t.shape)
 
         # Clip
@@ -71,7 +72,7 @@ class DDPM(nn.Module):
         post_variance = extract(self.post_variance, t_, x_t.shape)
         return post_mean, post_variance
 
-    def sample(self, x_t):
+    def sample(self, x_t, cond=None):
         # The sampling process goes here!
         x = x_t
 
@@ -83,7 +84,11 @@ class DDPM(nn.Module):
 
         for t in tqdm(reversed(range(0, self.T))):
             z = torch.randn_like(x_t)
-            post_mean, post_variance = self.get_posterior_mean_covariance(x, t)
+            post_mean, post_variance = self.get_posterior_mean_covariance(
+                x,
+                t,
+                cond=cond,
+            )
             # Langevin step!
             x = post_mean + torch.sqrt(post_variance) * z
         return x
@@ -95,14 +100,14 @@ class DDPM(nn.Module):
             self.minus_sqrt_alpha_bar, t, x_start.shape
         )
 
-    def forward(self, x, eps, t):
+    def forward(self, x, eps, t, low_res=None):
         if not self.setup_consts:
             self.setup_precomputed_const(x.device)
             self.setup_consts = True
 
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t)
-        return self.decoder(x_t, t)
+        return self.decoder(x_t, t, low_res=low_res)
 
 
 if __name__ == "__main__":
