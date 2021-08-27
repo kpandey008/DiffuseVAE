@@ -9,7 +9,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 from models.vae import VAE
-from models.unet import UNet
+from models.refiner.unet import UNet
 from util import get_dataset, save_as_images, configure_device
 
 

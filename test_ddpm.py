@@ -1,13 +1,29 @@
 import click
 import copy
+import matplotlib.pyplot as plt
 import os
 import torch
 import torchvision.transforms as T
 
-from models.diffusion import UNetModel, DDPM, DDPMWrapper
+from models.diffusion import UNetModel, DDPM, DDPMWrapper, SuperResModel
 from models.vae import VAE
 
 from util import save_as_images, configure_device
+
+
+def compare_samples(gen, refined, save_path=None, figsize=(6, 3)):
+    # Plot all the quantities
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=figsize)
+    ax[0].imshow(gen.permute(1, 2, 0))
+    ax[0].set_title("VAE Sample")
+    ax[0].axis("off")
+
+    ax[1].imshow(refined.permute(1, 2, 0))
+    ax[1].set_title("Refined Image")
+    ax[1].axis("off")
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, pad_inches=0)
 
 
 @click.group()
@@ -83,14 +99,14 @@ def sample_cond(
     z_dim=1024,
     save_path=os.getcwd(),
 ):
-    vae = VAE.load_from_checkpoint(vae_chkpt_path)
-    vae.eval()
-
     # TODO: Update this method to work for cpus
     dev, _ = configure_device(device)
 
+    vae = VAE.load_from_checkpoint(vae_chkpt_path).to(dev)
+    vae.eval()
+
     # Model
-    unet = UNetModel(
+    unet = SuperResModel(
         3,
         128,
         3,
@@ -99,9 +115,11 @@ def sample_cond(
             16,
         ],
         channel_mult=(1, 1, 2, 2, 4, 4),
-    )
-    online_network = DDPM(unet)
-    target_network = copy.deepcopy(online_network)
+        dropout=0,
+        num_heads=1,
+    ).to(dev)
+    online_network = DDPM(unet).to(dev)
+    target_network = copy.deepcopy(online_network).to(dev)
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         ddpm_chkpt_path,
         online_network=online_network,
@@ -113,13 +131,20 @@ def sample_cond(
     for idx in range(num_samples):
         with torch.no_grad():
             # Sample from VAE
-            z = torch.randn(1, z_dim, 1, 1)
-            recons = vae(z)
+            z = torch.randn(1, z_dim, 1, 1, device=dev)
+            recons_ = vae(z)
 
             # Sample from DDPM
             x_t = torch.randn(1, 3, image_size, image_size).to(dev)
-            recons = T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(recons)
-            samples_list.append(ddpm_wrapper(x_t, cond=recons).cpu())
+            recons = T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(recons_)
+            ddpm_sample = ddpm_wrapper(x_t, cond=recons).cpu()
+            samples_list.append(ddpm_sample)
+
+            compare_samples(
+                recons_.squeeze().cpu(),
+                ddpm_sample.squeeze(),
+                save_path=f"/content/compare_{idx}.png",
+            )
 
     cat_preds = torch.cat(samples_list, dim=0)
 
