@@ -1,10 +1,12 @@
 import click
 import copy
+import math
 import matplotlib.pyplot as plt
 import os
 import torch
 import torchvision.transforms as T
 
+from pytorch_lightning.utilities.seed import seed_everything
 from models.diffusion import UNetModel, DDPM, DDPMWrapper, SuperResModel
 from models.vae import VAE
 
@@ -23,7 +25,7 @@ def compare_samples(gen, refined, save_path=None, figsize=(6, 3)):
     ax[1].axis("off")
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=300, pad_inches=0)
+        plt.savefig(save_path, dpi=100, pad_inches=0)
 
 
 @click.group()
@@ -37,13 +39,16 @@ def cli():
 @click.option("--num-samples", default=1)
 @click.option("--image-size", default=128)
 @click.option("--save-path", default=os.getcwd())
+@click.option("--n-steps", default=1000)
 def sample(
     chkpt_path,
     device="gpu:1",
     num_samples=1,
     image_size=128,
+    n_steps=1000,
     save_path=os.getcwd(),
 ):
+    seed_everything(0)
     # TODO: Update this method to work for cpus
     dev, _ = configure_device(device)
 
@@ -57,6 +62,8 @@ def sample(
             16,
         ],
         channel_mult=(1, 1, 2, 2, 4, 4),
+        dropout=0,
+        num_heads=1,
     )
     online_network = DDPM(unet)
     target_network = copy.deepcopy(online_network)
@@ -67,19 +74,24 @@ def sample(
     ).to(dev)
     ddpm_wrapper.eval()
 
-    samples_list = []
-    for idx in range(num_samples):
-        with torch.no_grad():
-            x_t = torch.randn(1, 3, image_size, image_size).to(dev)
-            samples_list.append(ddpm_wrapper(x_t).cpu())
+    batch_size = min(16, num_samples)
 
-    cat_preds = torch.cat(samples_list, dim=0)
+    ddpm_samples_list = []
+    for idx in range(math.ceil(num_samples / batch_size)):
+        with torch.no_grad():
+            # Sample from DDPM
+            x_t = torch.randn(batch_size, 3, image_size, image_size).to(dev)
+            ddpm_sample = ddpm_wrapper(x_t, n_steps=n_steps).cpu()
+            ddpm_samples_list.append(ddpm_sample)
+
+    ddpm_cat_preds = torch.cat(ddpm_samples_list[:num_samples], dim=0)
 
     # Save the image and reconstructions as numpy arrays
+    save_path = os.path.join(save_path, str(n_steps))
     os.makedirs(save_path, exist_ok=True)
 
     # Save a comparison of all images
-    save_as_images(cat_preds)
+    save_as_images(ddpm_cat_preds, file_name=os.path.join(save_path, "output"))
 
 
 @cli.command()
@@ -90,6 +102,8 @@ def sample(
 @click.option("--image-size", default=128)
 @click.option("--z-dim", default=1024)
 @click.option("--save-path", default=os.getcwd())
+@click.option("--n-steps", default=1000)
+@click.option("--compare", default=True)
 def sample_cond(
     vae_chkpt_path,
     ddpm_chkpt_path,
@@ -97,8 +111,11 @@ def sample_cond(
     num_samples=1,
     image_size=128,
     z_dim=1024,
+    n_steps=1000,
     save_path=os.getcwd(),
+    compare=True,
 ):
+    seed_everything(0)
     # TODO: Update this method to work for cpus
     dev, _ = configure_device(device)
 
@@ -127,32 +144,39 @@ def sample_cond(
     ).to(dev)
     ddpm_wrapper.eval()
 
-    samples_list = []
-    for idx in range(num_samples):
+    batch_size = min(16, num_samples)
+
+    ddpm_samples_list = []
+    vae_samples_list = []
+    for idx in range(math.ceil(num_samples / batch_size)):
         with torch.no_grad():
             # Sample from VAE
-            z = torch.randn(1, z_dim, 1, 1, device=dev)
+            z = torch.randn(batch_size, z_dim, 1, 1, device=dev)
             recons_ = vae(z)
+            vae_samples_list.append(recons_.cpu())
 
             # Sample from DDPM
-            x_t = torch.randn(1, 3, image_size, image_size).to(dev)
+            x_t = torch.randn(batch_size, 3, image_size, image_size).to(dev)
             recons = T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(recons_)
-            ddpm_sample = ddpm_wrapper(x_t, cond=recons).cpu()
-            samples_list.append(ddpm_sample)
+            ddpm_sample = ddpm_wrapper(x_t, cond=recons, n_steps=n_steps).cpu()
+            ddpm_samples_list.append(ddpm_sample)
 
-            compare_samples(
-                recons_.squeeze().cpu(),
-                ddpm_sample.squeeze(),
-                save_path=f"/content/compare_{idx}.png",
-            )
+    ddpm_cat_preds = torch.cat(ddpm_samples_list[:num_samples], dim=0)
+    vae_cat_preds = torch.cat(vae_samples_list[:num_samples], dim=0)
 
-    cat_preds = torch.cat(samples_list, dim=0)
-
-    # Save the image and reconstructions as numpy arrays
+    save_path = os.path.join(save_path, str(n_steps))
     os.makedirs(save_path, exist_ok=True)
 
+    save_as_images(ddpm_cat_preds, file_name=os.path.join(save_path, "output"))
+
     # Save a comparison of all images
-    save_as_images(cat_preds)
+    if compare:
+        for idx, (ddpm_pred, vae_pred) in enumerate(zip(ddpm_cat_preds, vae_cat_preds)):
+            compare_samples(
+                vae_pred,
+                ddpm_pred * 0.5 + 0.5,
+                save_path=os.path.join(save_path, "compare", f"compare_{idx}.png"),
+            )
 
 
 if __name__ == "__main__":
