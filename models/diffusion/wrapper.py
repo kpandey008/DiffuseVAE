@@ -97,11 +97,11 @@ class DDPMWrapper(pl.LightningModule):
         self.criterion = nn.MSELoss(reduction="mean") if loss == "l2" else nn.L1Loss()
         self.lr = lr
 
-    def forward(self, x, cond=None):
+    def forward(self, x, cond=None, n_steps=None):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
         )
-        return sample_nw.sample(x, cond=cond)
+        return sample_nw.sample(x, cond=cond, n_steps=n_steps)
 
     def training_step(self, batch, batch_idx):
         cond = None

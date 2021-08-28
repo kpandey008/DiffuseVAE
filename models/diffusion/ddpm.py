@@ -72,7 +72,7 @@ class DDPM(nn.Module):
         post_variance = extract(self.post_variance, t_, x_t.shape)
         return post_mean, post_variance
 
-    def sample(self, x_t, cond=None):
+    def sample(self, x_t, cond=None, n_steps=None):
         # The sampling process goes here!
         x = x_t
 
@@ -82,7 +82,8 @@ class DDPM(nn.Module):
             self.setup_precomputed_const(dev)
             self.setup_consts = True
 
-        for t in tqdm(reversed(range(0, self.T))):
+        num_steps = self.T if n_steps is None else n_steps
+        for t in tqdm(reversed(range(0, num_steps))):
             z = torch.randn_like(x_t)
             post_mean, post_variance = self.get_posterior_mean_covariance(
                 x,
