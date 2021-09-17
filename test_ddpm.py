@@ -10,27 +10,122 @@ from pytorch_lightning.utilities.seed import seed_everything
 from models.diffusion import UNetModel, DDPM, DDPMWrapper, SuperResModel
 from models.vae import VAE
 
-from util import save_as_images, configure_device
+from util import save_as_images, configure_device, get_dataset, normalize
 
 
-def compare_samples(gen, refined, save_path=None, figsize=(6, 3)):
+def compare_samples(samples, save_path=None, figsize=(6, 3)):
     # Plot all the quantities
-    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=figsize)
-    ax[0].imshow(gen.permute(1, 2, 0))
-    ax[0].set_title("VAE Sample")
-    ax[0].axis("off")
+    ncols = len(samples)
+    fig, ax = plt.subplots(nrows=1, ncols=ncols, figsize=figsize)
 
-    ax[1].imshow(refined.permute(1, 2, 0))
-    ax[1].set_title("Refined Image")
-    ax[1].axis("off")
+    for idx, (caption, img) in enumerate(samples.items()):
+        ax[idx].imshow(img.permute(1, 2, 0))
+        ax[idx].set_title(caption)
+        ax[idx].axis("off")
 
     if save_path is not None:
         plt.savefig(save_path, dpi=100, pad_inches=0)
+
+    plt.close()
 
 
 @click.group()
 def cli():
     pass
+
+
+@cli.command()
+@click.argument("vae-chkpt-path")
+@click.argument("ddpm-chkpt-path")
+@click.argument('root')
+@click.option("--device", default="gpu:1")
+@click.option("--image-size", default=128)
+@click.option("--truncation", default=1.0, type=float)
+@click.option("--save-path", default=os.getcwd())
+@click.option('--n-samples', default=1)
+@click.option("--n-steps", default=1000)
+@click.option('--compare', default=True, type=bool)
+@click.option('--temp', default=1.0, type=float)
+@click.option("--seed", default=0)
+def generate_recons(vae_chkpt_path, ddpm_chkpt_path, root, **kwargs):
+    seed_everything(kwargs.get('seed'))
+    dev, _ = configure_device(kwargs.get('device'))
+    image_size = kwargs.get('image_size')
+    z_dim = kwargs.get('z_dim')
+    n_steps = kwargs.get('n_steps')
+    n_samples = kwargs.get('n_samples')
+
+    transforms = T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
+    dataset = get_dataset('recons', root, transform=transforms)
+
+    # VAE model
+    vae = VAE.load_from_checkpoint(vae_chkpt_path).to(dev)
+    vae.eval()
+
+    # Superres Model
+    unet = SuperResModel(
+        3,
+        128,
+        3,
+        num_res_blocks=2,
+        attention_resolutions=[
+            16,
+        ],
+        channel_mult=(1, 1, 2, 2, 4, 4),
+        dropout=0,
+        num_heads=1,
+    ).to(dev)
+
+    online_network = DDPM(unet, beta_1=1e-4, beta_2=0.02, T=1000).to(dev)
+    target_network = copy.deepcopy(online_network).to(dev)
+    ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
+        ddpm_chkpt_path,
+        online_network=online_network,
+        target_network=target_network,
+    ).to(dev)
+    ddpm_wrapper.eval()
+
+    ddpm_samples_list = []
+    vae_samples_list = []
+    orig_samples_list = []
+
+    for idx, (recons, img) in enumerate(dataset):
+        if idx > n_samples - 1:
+            break
+
+        with torch.no_grad():
+            recons = recons.unsqueeze(0).to(dev)
+            x_t = kwargs.get('temp') * torch.randn_like(recons)
+            ddpm_sample = ddpm_wrapper(x_t, cond=recons, n_steps=n_steps).cpu()
+
+        ddpm_samples_list.append(ddpm_sample)
+        vae_samples_list.append(recons.cpu())
+        orig_samples_list.append(img.unsqueeze(0))
+
+    ddpm_cat_preds = normalize(torch.cat(ddpm_samples_list, dim=0))
+    vae_cat_preds = normalize(torch.cat(vae_samples_list, dim=0))
+    orig_samples_list = normalize(torch.cat(orig_samples_list, dim=0))
+
+    # Save reconstruction
+    save_path = kwargs.get('save_path')
+    save_path = os.path.join(save_path, str(n_steps))
+    os.makedirs(save_path, exist_ok=True)
+    save_as_images(ddpm_cat_preds, file_name=os.path.join(save_path, "output_form1"))
+
+    # Save a comparison of all images
+    if kwargs.get('compare'):
+        compare_path = os.path.join(save_path, "compare")
+        os.makedirs(compare_path, exist_ok=True)
+        for idx, (ddpm_pred, vae_pred, img) in enumerate(zip(ddpm_cat_preds, vae_cat_preds, orig_samples_list)):
+            samples = {
+                'VAE': vae_pred,
+                'DDPM': ddpm_pred,
+                'Original': img
+            }
+            compare_samples(
+                samples,
+                save_path=os.path.join(compare_path, f"compare_form1_{idx}.png"),
+            )
 
 
 @cli.command()
@@ -104,6 +199,8 @@ def sample(
 @click.option("--save-path", default=os.getcwd())
 @click.option("--n-steps", default=1000)
 @click.option("--compare", default=True)
+@click.option('--temp', default=1.0, type=float)
+@click.option("--seed", default=0)
 def sample_cond(
     vae_chkpt_path,
     ddpm_chkpt_path,
@@ -114,8 +211,10 @@ def sample_cond(
     n_steps=1000,
     save_path=os.getcwd(),
     compare=True,
+    seed=0,
+    temp=1.0,
 ):
-    seed_everything(0)
+    seed_everything(seed)
     # TODO: Update this method to work for cpus
     dev, _ = configure_device(device)
 
@@ -161,21 +260,26 @@ def sample_cond(
             ddpm_sample = ddpm_wrapper(x_t, cond=recons, n_steps=n_steps).cpu()
             ddpm_samples_list.append(ddpm_sample)
 
-    ddpm_cat_preds = torch.cat(ddpm_samples_list[:num_samples], dim=0)
-    vae_cat_preds = torch.cat(vae_samples_list[:num_samples], dim=0)
+    ddpm_cat_preds = normalize(torch.cat(ddpm_samples_list[:num_samples], dim=0))
+    vae_cat_preds = normalize(torch.cat(vae_samples_list[:num_samples], dim=0))
 
     save_path = os.path.join(save_path, str(n_steps))
     os.makedirs(save_path, exist_ok=True)
 
-    save_as_images(ddpm_cat_preds, file_name=os.path.join(save_path, "output"))
+    save_as_images(ddpm_cat_preds, file_name=os.path.join(save_path, "output_form1"))
 
     # Save a comparison of all images
     if compare:
+        save_path = os.path.join(save_path, "compare")
+        os.makedirs(save_path, exist_ok=True)
         for idx, (ddpm_pred, vae_pred) in enumerate(zip(ddpm_cat_preds, vae_cat_preds)):
+            samples = {
+                'VAE': vae_pred,
+                'DDPM': ddpm_pred,
+            }
             compare_samples(
-                vae_pred,
-                ddpm_pred * 0.5 + 0.5,
-                save_path=os.path.join(save_path, "compare", f"compare_{idx}.png"),
+                samples,
+                save_path=os.path.join(save_path, f"compare_form1_{idx}.png"),
             )
 
 
