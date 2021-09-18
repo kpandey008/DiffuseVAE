@@ -1,17 +1,21 @@
-python test_ddpm.py sample-cond --n-steps 700 \
-                                --device gpu:3 \
+python test_ddpm.py sample-cond --n-steps 500 \
+                                --device gpu:0,1,2,3 \
                                 --save-path ~/cond_inference_form1/ \
-                                --num-samples 1 \
-                                --compare True \
+                                --num-samples 8 \
+                                --compare False \
                                 --seed 0 \
+                                --batch-size 2 \
                                 ~/vaedm/checkpoints/vae-epoch\=189-train_loss\=0.00.ckpt \
                                 ~/ddpm_128_form1/ddpmv2-epoch\=801-loss\=0.0434.ckpt
 
 # python test_ddpm.py generate-recons --n-steps 700 \
-#                                 --device gpu:3 \
+#                                 --device gpu:0,1,2,3 \
 #                                 --save-path ~/cond_inference_form1/ \
 #                                 --seed 0 \
-#                                 --n-samples 8 \
+#                                 --num-samples 8 \
+#                                 --batch-size 2 \
+#                                 --compare True \
+#                                 --image-size 128 \
 #                                 ~/vaedm/checkpoints/vae-epoch\=189-train_loss\=0.00.ckpt \
 #                                 ~/ddpm_128_form1/ddpmv2-epoch\=801-loss\=0.0434.ckpt \
 #                                 ~/vaedm/reconstructions/

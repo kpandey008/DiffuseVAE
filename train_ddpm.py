@@ -1,24 +1,18 @@
 # Uses the openai Unet port
-import click
 import copy
 import logging
 import os
+
+import click
 import pytorch_lightning as pl
 import torchvision.transforms as T
-
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
-from models.diffusion import (
-    DDPM,
-    UNetModel,
-    DDPMWrapper,
-    BYOLMAWeightUpdate,
-    SuperResModel,
-)
+from models.callbacks import BYOLMAWeightUpdate
+from models.diffusion import DDPM, DDPMWrapper, SuperResModel, UNetModel
 from util import configure_device, get_dataset
-
 
 logger = logging.getLogger(__name__)
 

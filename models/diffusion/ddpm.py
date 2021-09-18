@@ -1,11 +1,7 @@
-import numpy as np
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 
 from models.diffusion.unet import Unet
-
-from tqdm import tqdm
 
 
 def extract(a, t, x_shape):
@@ -83,7 +79,7 @@ class DDPM(nn.Module):
             self.setup_consts = True
 
         num_steps = self.T if n_steps is None else n_steps
-        for t in tqdm(reversed(range(0, num_steps))):
+        for t in reversed(range(0, num_steps)):
             z = torch.randn_like(x_t)
             post_mean, post_variance = self.get_posterior_mean_covariance(
                 x,

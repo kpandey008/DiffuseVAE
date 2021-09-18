@@ -1,11 +1,12 @@
 import logging
+
+import matplotlib.pyplot as plt
 import numpy as np
-import models.backbone.resnet as backbone_models
 import torch
-
 from PIL import Image
-from datasets import CelebADataset, CelebAMaskHQDataset, ReconstructionDataset
 
+import models.backbone.resnet as backbone_models
+from datasets import CelebADataset, CelebAMaskHQDataset, ReconstructionDataset
 
 logger = logging.getLogger(__name__)
 
@@ -109,3 +110,19 @@ def save_as_images(obj, file_name="output"):
         current_file_name = file_name + "_%d.png" % i
         logger.info("Saving image to {}".format(current_file_name))
         out.save(current_file_name, "png")
+
+
+def compare_samples(samples, save_path=None, figsize=(6, 3)):
+    # Plot all the quantities
+    ncols = len(samples)
+    fig, ax = plt.subplots(nrows=1, ncols=ncols, figsize=figsize)
+
+    for idx, (caption, img) in enumerate(samples.items()):
+        ax[idx].imshow(img.permute(1, 2, 0))
+        ax[idx].set_title(caption)
+        ax[idx].axis("off")
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=100, pad_inches=0)
+
+    plt.close()
