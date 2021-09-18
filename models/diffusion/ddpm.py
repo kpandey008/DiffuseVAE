@@ -68,9 +68,10 @@ class DDPM(nn.Module):
         post_variance = extract(self.post_variance, t_, x_t.shape)
         return post_mean, post_variance
 
-    def sample(self, x_t, cond=None, n_steps=None):
+    def sample(self, x_t, cond=None, n_steps=None, checkpoints=[]):
         # The sampling process goes here!
         x = x_t
+        sample_dict = {}
 
         # Set device
         dev = x_t.device
@@ -79,7 +80,8 @@ class DDPM(nn.Module):
             self.setup_consts = True
 
         num_steps = self.T if n_steps is None else n_steps
-        for t in reversed(range(0, num_steps)):
+        checkpoints = [num_steps] if checkpoints == [] else checkpoints
+        for idx, t in enumerate(reversed(range(0, num_steps))):
             z = torch.randn_like(x_t)
             post_mean, post_variance = self.get_posterior_mean_covariance(
                 x,
@@ -88,7 +90,11 @@ class DDPM(nn.Module):
             )
             # Langevin step!
             x = post_mean + torch.sqrt(post_variance) * z
-        return x
+
+            # Add results
+            if idx + 1 in checkpoints:
+                sample_dict[str(idx + 1)] = x
+        return sample_dict
 
     def compute_noisy_input(self, x_start, eps, t):
         assert eps.shape == x_start.shape

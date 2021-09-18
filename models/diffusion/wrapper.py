@@ -1,3 +1,4 @@
+from models.diffusion.unet_openai import checkpoint
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -16,6 +17,7 @@ class DDPMWrapper(pl.LightningModule):
         conditional=True,
         eval_mode="sample",
         pred_steps=None,
+        pred_checkpoints=[],
     ):
         super().__init__()
         assert loss in ["l1", "l2"]
@@ -30,12 +32,13 @@ class DDPMWrapper(pl.LightningModule):
         self.lr = lr
         self.eval_mode = eval_mode
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
+        self.pred_checkpoints = pred_checkpoints
 
-    def forward(self, x, cond=None, n_steps=None):
+    def forward(self, x, cond=None, n_steps=None, checkpoints=[]):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
         )
-        return sample_nw.sample(x, cond=cond, n_steps=n_steps)
+        return sample_nw.sample(x, cond=cond, n_steps=n_steps, checkpoints=checkpoints)
 
     def training_step(self, batch, batch_idx):
         cond = None
@@ -69,7 +72,15 @@ class DDPMWrapper(pl.LightningModule):
         else:
             (recons, _), x_t = batch
             x_t = x_t[0]  # This is really a one element tuple
-        return self(x_t, cond=recons, n_steps=self.pred_steps), recons
+        return (
+            self(
+                x_t,
+                cond=recons,
+                n_steps=self.pred_steps,
+                checkpoints=self.pred_checkpoints,
+            ),
+            recons,
+        )
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.online_network.parameters(), lr=self.lr)

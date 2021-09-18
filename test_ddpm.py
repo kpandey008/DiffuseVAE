@@ -16,12 +16,14 @@ from models.callbacks import ImageWriter
 from models.diffusion import DDPM, DDPMWrapper, SuperResModel, UNetModel
 from models.vae import VAE
 from util import (
-    compare_samples,
     configure_device,
-    get_dataset,
-    normalize,
     save_as_images,
 )
+
+
+def __parse_str(s):
+    split = s.split(",")
+    return [int(s) for s in split if s != "" and s is not None]
 
 
 @click.group()
@@ -84,7 +86,7 @@ def generate_recons(vae_chkpt_path, ddpm_chkpt_path, root, **kwargs):
         vae=vae,
         strict=False,
         pred_steps=n_steps,
-        eval_mode='recons',
+        eval_mode="recons",
     )
 
     # Create predict dataset of reconstructions
@@ -148,6 +150,7 @@ def generate_recons(vae_chkpt_path, ddpm_chkpt_path, root, **kwargs):
 @click.option("--batch-size", default=8)
 @click.option("--temp", default=1.0, type=float)
 @click.option("--seed", default=0)
+@click.option("--checkpoints", default="")
 def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
     seed_everything(kwargs.get("seed"))
 
@@ -156,6 +159,7 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
     n_steps = kwargs.get("n_steps")
     image_size = kwargs.get("image_size")
     n_samples = kwargs.get("num_samples")
+    checkpoints = __parse_str(kwargs.get("checkpoints"))
 
     # Load pretrained VAE
     vae = VAE.load_from_checkpoint(vae_chkpt_path)
@@ -188,7 +192,8 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
         vae=vae,
         strict=False,
         pred_steps=n_steps,
-        eval_mode='sample',
+        eval_mode="sample",
+        pred_checkpoints=checkpoints,
     )
 
     # Create predict dataset of latents
@@ -228,7 +233,7 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
         "batch",
         compare=kwargs.get("compare"),
         n_steps=n_steps,
-        eval_mode='sample',
+        eval_mode="sample",
     )
     test_kwargs["callbacks"] = [write_callback]
     test_kwargs["default_root_dir"] = kwargs.get("save_path")
