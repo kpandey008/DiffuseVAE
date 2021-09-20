@@ -6,7 +6,12 @@ import torch
 from PIL import Image
 
 import models.backbone.resnet as backbone_models
-from datasets import CelebADataset, CelebAMaskHQDataset, ReconstructionDataset
+from datasets import (
+    CelebADataset,
+    CelebAMaskHQDataset,
+    ReconstructionDataset,
+    CIFAR10Dataset,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +55,15 @@ def get_resnet_models(backbone_name, pretrained=False, **kwargs):
     return backbone
 
 
-def get_dataset(name, root, **kwargs):
+def get_dataset(name, root, transform=None, **kwargs):
     if name == "celeba":
-        dataset = CelebADataset(root, **kwargs)
+        dataset = CelebADataset(root, transform=transform, **kwargs)
     elif name == "celeba-hq":
-        dataset = CelebAMaskHQDataset(root, **kwargs)
+        dataset = CelebAMaskHQDataset(root, transform=transform, **kwargs)
     elif name == "recons":
-        dataset = ReconstructionDataset(root, **kwargs)
+        dataset = ReconstructionDataset(root, transform=transform, **kwargs)
+    elif name == "cifar10":
+        dataset = CIFAR10Dataset(root, transform=transform, **kwargs)
     else:
         raise NotImplementedError(
             f"The dataset {name} does not exist in our datastore."

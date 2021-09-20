@@ -105,7 +105,13 @@ def train(root, **kwargs):
         beta_2=kwargs.get("beta2"),
         T=kwargs.get("n_timesteps"),
     )
-    ddpm_wrapper = DDPMWrapper(ddpm, copy.deepcopy(ddpm), lr=lr, loss="l1")
+    ddpm_wrapper = DDPMWrapper(
+        ddpm,
+        copy.deepcopy(ddpm),
+        lr=lr,
+        loss="l1",
+        conditional=kwargs.get("use_cond"),
+    )
 
     # Trainer
     train_kwargs = {}
