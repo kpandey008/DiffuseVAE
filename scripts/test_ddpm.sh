@@ -1,12 +1,24 @@
 ulimit -n 2048
 python test_ddpm.py sample-cond --n-steps 500 \
-                                --device gpu:0,1,2 \
-                                --save-path ~/cond_inference_form1/ \
-                                --num-samples 4 \
+                                --device gpu:0,1,2,3 \
+                                --save-path ~/ddpm_samples_celebahq_128_nsamples5k_form1/ \
+                                --num-samples 5000 \
                                 --compare False \
                                 --seed 0 \
-                                --batch-size 1 \
-                                --n-workers 1 \
+                                --batch-size 16 \
+                                --n-workers 8 \
+                                --checkpoints "" \
+                                ~/vaedm/checkpoints/vae-epoch\=189-train_loss\=0.00.ckpt \
+                                ~/ddpm_128_form1/ddpmv2-epoch\=801-loss\=0.0434.ckpt
+
+python test_ddpm.py sample-cond --n-steps 500 \
+                                --device gpu:0,1,2,3 \
+                                --save-path ~/ddpm_samples_celebahq_128_nsamples5k_form1_folder2/ \
+                                --num-samples 5000 \
+                                --compare False \
+                                --seed 1 \
+                                --batch-size 16 \
+                                --n-workers 8 \
                                 --checkpoints "" \
                                 ~/vaedm/checkpoints/vae-epoch\=189-train_loss\=0.00.ckpt \
                                 ~/ddpm_128_form1/ddpmv2-epoch\=801-loss\=0.0434.ckpt
