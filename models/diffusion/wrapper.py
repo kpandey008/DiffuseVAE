@@ -10,7 +10,7 @@ class DDPMWrapper(pl.LightningModule):
         self,
         online_network,
         target_network,
-        vae,
+        vae=None,
         lr=2e-5,
         loss="l1",
         sample_from="target",
