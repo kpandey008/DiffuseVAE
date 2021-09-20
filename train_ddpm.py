@@ -28,7 +28,7 @@ def __parse_str(s):
 @click.option("--attn-resolutions", default="16,")
 @click.option("--n-residual", default=1)
 @click.option("--dim-mults", default="1,2,4,8")
-@click.option("--dropout", default=0)
+@click.option("--dropout", default=0, type=float)
 @click.option("--n-heads", default=1)
 @click.option("--beta1", default=1e-4, type=float)
 @click.option("--beta2", default=0.02, type=float)
