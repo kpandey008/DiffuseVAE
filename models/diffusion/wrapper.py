@@ -64,6 +64,15 @@ class DDPMWrapper(pl.LightningModule):
         return loss
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
+        if not self.conditional:
+            x_t = batch
+            return self(
+                x_t,
+                cond=None,
+                n_steps=self.pred_steps,
+                checkpoints=self.pred_checkpoints,
+            )
+
         if self.eval_mode == "sample":
             x_t, z = batch
             recons = self.vae(z)

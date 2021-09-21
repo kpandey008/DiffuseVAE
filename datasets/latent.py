@@ -16,6 +16,18 @@ class LatentDataset(Dataset):
         return int(self.z_ddpm.size(0))
 
 
+class UncondLatentDataset(Dataset):
+    def __init__(self, z_ddpm_size, **kwargs):
+        # NOTE: The batch index must be included in the latent code size input
+        self.z_ddpm = torch.randn(z_ddpm_size)
+
+    def __getitem__(self, idx):
+        return self.z_ddpm[idx]
+
+    def __len__(self):
+        return int(self.z_ddpm.size(0))
+
+
 class ZipDataset(Dataset):
     def __init__(self, recons_dataset, latent_dataset, **kwargs):
         # NOTE: The batch index must be included in the latent code size input
