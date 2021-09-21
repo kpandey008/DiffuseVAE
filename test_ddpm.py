@@ -246,6 +246,7 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
 @click.option("--image-size", default=128)
 @click.option("--save-path", default=os.getcwd())
 @click.option("--n-steps", default=1000)
+@click.option("--seed", default=0)
 def sample(
     chkpt_path,
     device="gpu:1",
@@ -253,9 +254,10 @@ def sample(
     image_size=128,
     n_steps=1000,
     save_path=os.getcwd(),
+    seed=0,
 ):
-    seed_everything(0)
-    # TODO: Update this method to work for cpus
+    seed_everything(seed)
+
     dev, _ = configure_device(device)
 
     # Model
@@ -271,8 +273,10 @@ def sample(
         dropout=0,
         num_heads=1,
     )
+    unet.eval()
     online_network = DDPM(unet)
     target_network = copy.deepcopy(online_network)
+    target_network.eval()
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         chkpt_path,
         online_network=online_network,
@@ -283,14 +287,14 @@ def sample(
     batch_size = min(16, num_samples)
 
     ddpm_samples_list = []
-    for idx in range(math.ceil(num_samples / batch_size)):
+    for _ in range(math.ceil(num_samples / batch_size)):
         with torch.no_grad():
             # Sample from DDPM
             x_t = torch.randn(batch_size, 3, image_size, image_size).to(dev)
-            ddpm_sample = ddpm_wrapper(x_t, n_steps=n_steps).cpu()
+            ddpm_sample = ddpm_wrapper(x_t, n_steps=n_steps)[str(n_steps)].cpu()
             ddpm_samples_list.append(ddpm_sample)
 
-    ddpm_cat_preds = torch.cat(ddpm_samples_list[:num_samples], dim=0)
+    ddpm_cat_preds = normalize(torch.cat(ddpm_samples_list[:num_samples], dim=0))
 
     # Save the image and reconstructions as numpy arrays
     save_path = os.path.join(save_path, str(n_steps))
