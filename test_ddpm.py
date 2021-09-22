@@ -13,7 +13,7 @@ from tqdm import tqdm
 
 from datasets.latent import LatentDataset, ZipDataset, UncondLatentDataset
 from datasets.recons import ReconstructionDataset
-from models.callbacks import ImageWriter, UncondImageWriter
+from models.callbacks import ImageWriter
 from models.diffusion import DDPM, DDPMWrapper, SuperResModel, UNetModel
 from models.vae import VAE
 from util import configure_device, normalize, save_as_images
@@ -138,12 +138,14 @@ def generate_recons(vae_chkpt_path, ddpm_chkpt_path, root, **kwargs):
 @click.argument("vae-chkpt-path")
 @click.argument("ddpm-chkpt-path")
 @click.option("--device", default="gpu:1")
+@click.option("--sample-prefix", default="")
 @click.option("--num-samples", default=1)
 @click.option("--image-size", default=128)
 @click.option("--z-dim", default=1024)
 @click.option("--save-path", default=os.getcwd())
 @click.option("--n-steps", default=1000)
-@click.option("--compare", default=True)
+@click.option("--compare", default=True, type=bool)
+@click.option("--save-vae", default=False, type=bool)
 @click.option("--n-workers", default=8)
 @click.option("--batch-size", default=8)
 @click.option("--temp", default=1.0, type=float)
@@ -176,6 +178,7 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
         dropout=0,
         num_heads=1,
     )
+    unet.eval()
     online_network = DDPM(unet)
     online_network.eval()
     target_network = copy.deepcopy(online_network)
@@ -232,6 +235,8 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
         compare=kwargs.get("compare"),
         n_steps=n_steps,
         eval_mode="sample",
+        prefix=kwargs.get("sample_prefix"),
+        save_vae=kwargs.get("save_vae"),
     )
     test_kwargs["callbacks"] = [write_callback]
     test_kwargs["default_root_dir"] = kwargs.get("save_path")
@@ -242,6 +247,7 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
 @cli.command()
 @click.argument("ddpm-chkpt-path")
 @click.option("--device", default="gpu:1")
+@click.option("--sample-prefix", default="")
 @click.option("--num-samples", default=1)
 @click.option("--image-size", default=128)
 @click.option("--save-path", default=os.getcwd())
@@ -251,7 +257,7 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
 @click.option("--temp", default=1.0, type=float)
 @click.option("--seed", default=0)
 @click.option("--checkpoints", default="")
-def sample_cond(ddpm_chkpt_path, **kwargs):
+def sample(ddpm_chkpt_path, **kwargs):
     seed_everything(kwargs.get("seed"))
 
     batch_size = kwargs.get("batch_size")
@@ -269,10 +275,11 @@ def sample_cond(ddpm_chkpt_path, **kwargs):
         attention_resolutions=[
             16,
         ],
-        channel_mult=(1, 1, 2, 2, 4, 4),
-        dropout=0,
+        channel_mult=(1, 2, 2, 2),
+        dropout=0.1,
         num_heads=1,
     )
+    unet.eval()
     online_network = DDPM(unet)
     online_network.eval()
     target_network = copy.deepcopy(online_network)
@@ -284,7 +291,6 @@ def sample_cond(ddpm_chkpt_path, **kwargs):
         ddpm_chkpt_path,
         online_network=online_network,
         target_network=target_network,
-        strict=False,
         conditional=False,
         pred_steps=n_steps,
         eval_mode="sample",
@@ -321,12 +327,14 @@ def sample_cond(ddpm_chkpt_path, **kwargs):
     )
 
     # Predict trainer
-    write_callback = UncondImageWriter(
+    write_callback = ImageWriter(
         kwargs.get("save_path"),
         "batch",
         compare=kwargs.get("compare"),
         n_steps=n_steps,
         eval_mode="sample",
+        conditional=False,
+        sample_prefix=kwargs.get("sample_prefix"),
     )
     test_kwargs["callbacks"] = [write_callback]
     test_kwargs["default_root_dir"] = kwargs.get("save_path")
