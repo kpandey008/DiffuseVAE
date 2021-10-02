@@ -84,39 +84,40 @@ def normalize(obj):
     return obj
 
 
-# CREDITS: https://github.com/huggingface/pytorch-pretrained-BigGAN/blob/master/pytorch_pretrained_biggan/utils.py
-def convert_to_images(obj):
+def convert_to_np(obj):
     """Convert an output tensor from BigGAN in a list of images.
     Params:
         obj: tensor or numpy array of shape (batch_size, channels, height, width)
     Output:
-        list of Pillow Images of size (height, width)
+        list of Numpy objects of size (height, width)
     """
-    obj = normalize(obj)
-    obj = obj.detach().numpy()
-    obj = obj.transpose((0, 2, 3, 1))
-    obj = np.clip(obj * 256, 0, 255)
+    obj = (normalize(obj) * 255).clamp(0, 255).to(torch.uint8)
+    obj = obj.permute(0, 2, 3, 1).contiguous()
+    obj = obj.detach().cpu().numpy()
 
-    img = []
+    obj_list = []
     for _, out in enumerate(obj):
-        out_array = np.asarray(np.uint8(out), dtype=np.uint8)
-        img.append(Image.fromarray(out_array))
-    return img
+        obj_list.append(out)
+    return obj_list
 
 
 def save_as_images(obj, file_name="output"):
-    """Convert and save an output tensor from BigGAN in a list of saved images.
-    Params:
-        obj: tensor or numpy array of shape (batch_size, channels, height, width)
-        file_name: path and beggingin of filename to save.
-            Images will be saved as `file_name_{image_number}.png`
-    """
-    img = convert_to_images(obj)
+    obj_list = convert_to_np(obj)
 
-    for i, out in enumerate(img):
+    for i, out in enumerate(obj_list):
+        img_out = Image.fromarray(out)
         current_file_name = file_name + "_%d.png" % i
         logger.info("Saving image to {}".format(current_file_name))
-        out.save(current_file_name, "png")
+        img_out.save(current_file_name, "png")
+
+
+def save_as_np(obj, file_name="output"):
+    obj_list = convert_to_np(obj)
+
+    for i, out in enumerate(obj_list):
+        current_file_name = file_name + "_%d.npy" % i
+        logger.info("Saving image to {}".format(current_file_name))
+        np.save(current_file_name, out)
 
 
 def compare_samples(samples, save_path=None, figsize=(6, 3)):

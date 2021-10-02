@@ -6,7 +6,7 @@ from pytorch_lightning import Callback, LightningModule, Trainer
 from pytorch_lightning.callbacks import BasePredictionWriter
 from torch import Tensor
 from torch.nn import Module
-from util import compare_samples, normalize, save_as_images
+from util import compare_samples, normalize, save_as_images, save_as_np
 
 
 class BYOLMAWeightUpdate(Callback):
@@ -88,6 +88,7 @@ class ImageWriter(BasePredictionWriter):
         conditional=True,
         sample_prefix="",
         save_vae=False,
+        save_mode="image",
     ):
         super().__init__(write_interval)
         assert eval_mode in ["sample", "recons"]
@@ -98,6 +99,7 @@ class ImageWriter(BasePredictionWriter):
         self.conditional = conditional
         self.sample_prefix = sample_prefix
         self.save_vae = save_vae
+        self.save_fn = save_as_images if save_mode == "image" else save_as_np
 
     def write_on_batch_end(
         self,
@@ -117,7 +119,7 @@ class ImageWriter(BasePredictionWriter):
                 vae_samples = normalize(vae_samples).cpu()
                 vae_save_path = os.path.join(self.output_dir, "vae")
                 os.makedirs(vae_save_path, exist_ok=True)
-                save_as_images(
+                self.save_fn(
                     vae_samples,
                     file_name=os.path.join(
                         vae_save_path,
@@ -139,7 +141,7 @@ class ImageWriter(BasePredictionWriter):
             os.makedirs(img_save_path, exist_ok=True)
 
             # Save
-            save_as_images(
+            self.save_fn(
                 ddpm_samples,
                 file_name=os.path.join(
                     img_save_path, f"output_{self.sample_prefix }_{rank}_{batch_idx}"
