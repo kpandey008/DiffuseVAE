@@ -162,7 +162,13 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
     checkpoints = __parse_str(kwargs.get("checkpoints"))
 
     # Load pretrained VAE
-    vae = VAE.load_from_checkpoint(vae_chkpt_path)
+    vae = VAE.load_from_checkpoint(
+        vae_chkpt_path,
+        enc_block_str="32x7,32d2,32t16,16x4,16d2,16t8,8x4,8d2,8t4,4x3,4d4,4t1,1x3",
+        dec_block_str="1x1,1u4,1t4,4x2,4u2,4t8,8x3,8u2,8t16,16x7,16u2,16t32,32x15",
+        enc_channel_str="32:64,16:128,8:256,4:256,1:512",
+        dec_channel_str="32:64,16:128,8:256,4:256,1:512",
+    )
     vae.eval()
 
     # Load pretrained wrapper
@@ -174,8 +180,8 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
         attention_resolutions=[
             16,
         ],
-        channel_mult=(1, 1, 2, 2, 4, 4),
-        dropout=0,
+        channel_mult=(1, 2, 2, 2),
+        dropout=0.1,
         num_heads=1,
     )
     unet.eval()
@@ -235,7 +241,7 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
         compare=kwargs.get("compare"),
         n_steps=n_steps,
         eval_mode="sample",
-        prefix=kwargs.get("sample_prefix"),
+        sample_prefix=kwargs.get("sample_prefix"),
         save_vae=kwargs.get("save_vae"),
     )
     test_kwargs["callbacks"] = [write_callback]
@@ -256,7 +262,13 @@ def sample_cond(vae_chkpt_path, ddpm_chkpt_path, **kwargs):
 @click.option("--batch-size", default=8)
 @click.option("--temp", default=1.0, type=float)
 @click.option("--seed", default=0)
+@click.option("--var-type", default="fixedlarge")
 @click.option("--checkpoints", default="")
+@click.option(
+    "--save-mode",
+    default="image",
+    type=click.Choice(["image", "numpy"], case_sensitive=False),
+)
 def sample(ddpm_chkpt_path, **kwargs):
     seed_everything(kwargs.get("seed"))
 
@@ -280,13 +292,11 @@ def sample(ddpm_chkpt_path, **kwargs):
         num_heads=1,
     )
     unet.eval()
-    online_network = DDPM(unet)
+    online_network = DDPM(unet, var_type=kwargs.get("var_type"))
     online_network.eval()
     target_network = copy.deepcopy(online_network)
     target_network.eval()
 
-    # NOTE: Using strict=False since the VAE model is not included
-    # in the pretrained DDPM state_dict
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         ddpm_chkpt_path,
         online_network=online_network,
@@ -335,6 +345,7 @@ def sample(ddpm_chkpt_path, **kwargs):
         eval_mode="sample",
         conditional=False,
         sample_prefix=kwargs.get("sample_prefix"),
+        save_mode=kwargs.get("save_mode"),
     )
     test_kwargs["callbacks"] = [write_callback]
     test_kwargs["default_root_dir"] = kwargs.get("save_path")
