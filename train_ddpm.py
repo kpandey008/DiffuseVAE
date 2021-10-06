@@ -51,6 +51,7 @@ def __parse_str(s):
 @click.option("--image-size", default=128)
 @click.option("--workers", default=4)
 @click.option("--use-cond", default=True, type=bool)
+@click.option("--loss", default="l1", type=click.Choice(["l1", "l2"]))
 def train(root, **kwargs):
     # Set seed
     seed_everything(kwargs.get("seed"), workers=True)
@@ -92,7 +93,7 @@ def train(root, **kwargs):
         ddpm,
         copy.deepcopy(ddpm),
         lr=lr,
-        loss="l1",
+        loss=kwargs.get('loss'),
         conditional=kwargs.get("use_cond"),
     )
 
