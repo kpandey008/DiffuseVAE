@@ -33,9 +33,9 @@ def __parse_str(s):
 @click.option("--beta1", default=1e-4, type=float)
 @click.option("--beta2", default=0.02, type=float)
 @click.option("--n-timesteps", default=1000)
-@click.option("--fp16", default=False)
+@click.option("--fp16", default=False, type=bool)
 @click.option("--seed", default=0)
-@click.option("--use-ema", default=True)
+@click.option("--use-ema", default=True, type=bool)
 @click.option("--ema-decay", default=0.9999, type=float)
 @click.option("--batch-size", default=32)
 @click.option("--epochs", default=1000)
@@ -43,11 +43,11 @@ def __parse_str(s):
 @click.option("--device", default="gpu:0")
 @click.option("--chkpt-interval", default=1)
 @click.option("--optimizer", default="Adam")
-@click.option("--lr", default=2e-5)
+@click.option("--lr", default=2e-5, type=float)
 @click.option("--restore-path", default=None)
 @click.option("--results-dir", default=os.getcwd())
 @click.option("--dataset", default="celeba-hq")
-@click.option("--flip", default=False)
+@click.option("--flip", default=False, type=bool)
 @click.option("--image-size", default=128)
 @click.option("--workers", default=4)
 @click.option("--use-cond", default=True, type=bool)
@@ -93,7 +93,7 @@ def train(root, **kwargs):
         ddpm,
         copy.deepcopy(ddpm),
         lr=lr,
-        loss=kwargs.get('loss'),
+        loss=kwargs.get("loss"),
         conditional=kwargs.get("use_cond"),
     )
 
