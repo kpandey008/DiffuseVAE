@@ -133,7 +133,7 @@ class ImageWriter(BasePredictionWriter):
         # NOTE: We need to use gpu rank during saving to prevent
         # processes from overwriting images
         for k, ddpm_samples in ddpm_samples_dict.items():
-            ddpm_samples = normalize(ddpm_samples).cpu()
+            ddpm_samples = ddpm_samples.cpu()
 
             # Setup dirs
             base_save_path = os.path.join(self.output_dir, k)
