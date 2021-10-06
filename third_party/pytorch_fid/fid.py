@@ -126,10 +126,10 @@ class NpPathDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         path = self.files[i]
-        img = np.load(path)
+        img = np.load(path).transpose(2, 0, 1)
         if self.transforms is not None:
             img = self.transforms(img)
-        return img
+        return torch.tensor(img)
 
 
 def get_activations(
@@ -165,7 +165,8 @@ def get_activations(
 
     print(mode)
     dataset = NpPathDataset if mode == "np" else ImagePathDataset
-    dataset = dataset(files, transforms=TF.ToTensor())
+    transforms = None if mode == "np" else TF.ToTensor()
+    dataset = dataset(files, transforms=transforms)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=batch_size,

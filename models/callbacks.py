@@ -1,5 +1,6 @@
 import math
 import os
+import torch
 from typing import Sequence, Union
 
 from pytorch_lightning import Callback, LightningModule, Trainer
@@ -9,8 +10,8 @@ from torch.nn import Module
 from util import compare_samples, normalize, save_as_images, save_as_np
 
 
-class BYOLMAWeightUpdate(Callback):
-    """Weight update rule from BYOL.
+class EMAWeightUpdate(Callback):
+    """EMA weight update
     Your model should have:
         - ``self.online_network``
         - ``self.target_network``
@@ -22,17 +23,16 @@ class BYOLMAWeightUpdate(Callback):
         model = Model()
         model.online_network = ...
         model.target_network = ...
-        trainer = Trainer(callbacks=[BYOLMAWeightUpdate()])
+        trainer = Trainer(callbacks=[EMAWeightUpdate()])
     """
 
-    def __init__(self, initial_tau: float = 0.9999):
+    def __init__(self, tau: float = 0.9999):
         """
         Args:
-            initial_tau: starting tau. Auto-updates with every training step
+            tau: EMA decay rate
         """
         super().__init__()
-        self.initial_tau = initial_tau
-        self.current_tau = initial_tau
+        self.tau = tau
 
     def on_train_batch_end(
         self,
@@ -50,31 +50,13 @@ class BYOLMAWeightUpdate(Callback):
         # update weights
         self.update_weights(online_net, target_net)
 
-        # update tau after
-        self.current_tau = self.update_tau(pl_module, trainer)
-
-    def update_tau(self, pl_module: LightningModule, trainer: Trainer) -> float:
-        max_steps = len(trainer.train_dataloader) * trainer.max_epochs  # type: ignore[attr-defined]
-        tau = (
-            1
-            - (1 - self.initial_tau)
-            * (math.cos(math.pi * pl_module.global_step / max_steps) + 1)
-            / 2
-        )
-        return tau
-
     def update_weights(
         self, online_net: Union[Module, Tensor], target_net: Union[Module, Tensor]
     ) -> None:
         # apply MA weight update
-        for (name, online_p), (_, target_p) in zip(
-            online_net.named_parameters(),  # type: ignore[union-attr]
-            target_net.named_parameters(),  # type: ignore[union-attr]
-        ):
-            target_p.data = (
-                self.current_tau * target_p.data
-                + (1 - self.current_tau) * online_p.data
-            )
+        with torch.no_grad():
+            for targ, src in zip(target_net.parameters(), online_net.parameters()):
+                targ.mul_(self.tau).add_(src, alpha=1 - self.tau)
 
 
 class ImageWriter(BasePredictionWriter):

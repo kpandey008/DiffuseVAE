@@ -83,7 +83,7 @@ def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
                 T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
             ]
         )
-        dataset = CIFAR10Dataset(root, transform=transform, **kwargs)
+        dataset = CIFAR10Dataset(root, transform=transform, norm=True, **kwargs)
     else:
         raise NotImplementedError(
             f"The dataset {name} does not exist in our datastore."
@@ -91,27 +91,7 @@ def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
     return dataset
 
 
-def normalize(obj):
-    B, C, H, W = obj.shape
-    for i in range(3):
-        channel_val = obj[:, i, :, :].view(B, -1)
-        channel_val -= channel_val.min(1, keepdim=True)[0]
-        channel_val /= (
-            channel_val.max(1, keepdim=True)[0] - channel_val.min(1, keepdim=True)[0]
-        )
-        channel_val = channel_val.view(B, H, W)
-        obj[:, i, :, :] = channel_val
-    return obj
-
-
 def convert_to_np(obj):
-    """Convert an output tensor from BigGAN in a list of images.
-    Params:
-        obj: tensor or numpy array of shape (batch_size, channels, height, width)
-    Output:
-        list of Numpy objects of size (height, width)
-    """
-    obj = (normalize(obj) * 255).clamp(0, 255).to(torch.uint8)
     obj = obj.permute(0, 2, 3, 1).contiguous()
     obj = obj.detach().cpu().numpy()
 
@@ -122,9 +102,11 @@ def convert_to_np(obj):
 
 
 def save_as_images(obj, file_name="output"):
+    # Saves predictions as png images (useful for Sample generation)
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
+        out = ((out + 1) * 127.5).clamp(0, 255).astype(np.uint8)
         img_out = Image.fromarray(out)
         current_file_name = file_name + "_%d.png" % i
         logger.info("Saving image to {}".format(current_file_name))
@@ -132,6 +114,7 @@ def save_as_images(obj, file_name="output"):
 
 
 def save_as_np(obj, file_name="output"):
+    # Saves predictions as numpy arrays between -1 and 1 (useful for FID computation)
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):

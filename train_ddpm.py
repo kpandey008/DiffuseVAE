@@ -10,7 +10,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
-from models.callbacks import BYOLMAWeightUpdate
+from models.callbacks import EMAWeightUpdate
 from models.diffusion import DDPM, DDPMWrapper, SuperResModel, UNetModel
 from util import configure_device, get_dataset
 
@@ -118,7 +118,7 @@ def train(root, **kwargs):
     train_kwargs["callbacks"] = [chkpt_callback]
 
     if kwargs.get("use_ema"):
-        ema_callback = BYOLMAWeightUpdate(initial_tau=kwargs.get("ema_decay"))
+        ema_callback = EMAWeightUpdate(tau=kwargs.get("ema_decay"))
         train_kwargs["callbacks"].append(ema_callback)
 
     device = kwargs.get("device")
