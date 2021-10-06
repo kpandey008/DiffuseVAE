@@ -1,4 +1,5 @@
 import logging
+import torchvision.transforms as T
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -55,14 +56,33 @@ def get_resnet_models(backbone_name, pretrained=False, **kwargs):
     return backbone
 
 
-def get_dataset(name, root, transform=None, **kwargs):
+def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
     if name == "celeba":
+        transform = T.Compose(
+            [
+                T.Resize(image_size),
+                T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
+            ]
+        )
         dataset = CelebADataset(root, transform=transform, **kwargs)
     elif name == "celeba-hq":
+        transform = T.Compose(
+            [
+                T.Resize(image_size),
+                T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
+            ]
+        )
         dataset = CelebAMaskHQDataset(root, transform=transform, **kwargs)
     elif name == "recons":
+        transform = None
         dataset = ReconstructionDataset(root, transform=transform, **kwargs)
     elif name == "cifar10":
+        assert image_size == 32
+        transform = T.Compose(
+            [
+                T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
+            ]
+        )
         dataset = CIFAR10Dataset(root, transform=transform, **kwargs)
     else:
         raise NotImplementedError(

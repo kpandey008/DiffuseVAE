@@ -44,7 +44,6 @@ def __parse_str(s):
 @click.option("--chkpt-interval", default=1)
 @click.option("--optimizer", default="Adam")
 @click.option("--lr", default=2e-5)
-@click.option("--sample-interval", default=100)  # Integrate this!
 @click.option("--restore-path", default=None)
 @click.option("--results-dir", default=os.getcwd())
 @click.option("--dataset", default="celeba-hq")
@@ -52,7 +51,6 @@ def __parse_str(s):
 @click.option("--image-size", default=128)
 @click.option("--workers", default=4)
 @click.option("--use-cond", default=True, type=bool)
-@click.option("--subsample-size", default=None)  # Integrate this!
 def train(root, **kwargs):
     # Set seed
     seed_everything(kwargs.get("seed"), workers=True)
@@ -60,22 +58,7 @@ def train(root, **kwargs):
     # Dataset and transforms
     d_type = kwargs.get("dataset")
     image_size = kwargs.get("image_size")
-
-    if d_type == "recons":
-        transforms = T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
-    else:
-        transforms = T.Compose(
-            [
-                T.Resize(image_size),
-                T.RandomHorizontalFlip()
-                if kwargs.get("flip")
-                else T.Lambda(lambda t: t),
-                T.CenterCrop(image_size),
-                T.ToTensor(),
-                T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-            ]
-        )
-    dataset = get_dataset(d_type, root, transform=transforms)
+    dataset = get_dataset(d_type, root, image_size, flip=kwargs.get("flip"))
     N = len(dataset)
     batch_size = kwargs.get("batch_size")
     batch_size = min(N, batch_size)
@@ -167,7 +150,11 @@ def train(root, **kwargs):
         **loader_kws,
     )
 
+    # # Gradient Clipping (as in Ho et al.)
+    # train_kwargs["gradient_clip_val"] = 1.0
+
     logger.info(f"Running Trainer with kwargs: {train_kwargs}")
+    print(train_kwargs)
     trainer = pl.Trainer(**train_kwargs)
     trainer.fit(ddpm_wrapper, train_dataloader=loader)
 
