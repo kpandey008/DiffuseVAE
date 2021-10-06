@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import torch
 
 from torch.utils.data import Dataset
@@ -16,7 +17,7 @@ class CIFAR10Dataset(Dataset):
     def __getitem__(self, idx):
         img, _ = self.dataset[idx]
         if self.norm:
-            img = (img / 127.5) - 1.0
+            img = (np.asarray(img).astype(np.float) / 127.5) - 1.0
         return torch.tensor(img).float()
 
     def __len__(self):
@@ -26,4 +27,4 @@ class CIFAR10Dataset(Dataset):
 if __name__ == "__main__":
     root = "/data/kushagrap20/datasets/"
     dataset = CIFAR10Dataset(root)
-    print(len(dataset))
+    print(dataset[0].shape)
