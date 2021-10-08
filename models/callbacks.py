@@ -98,7 +98,7 @@ class ImageWriter(BasePredictionWriter):
             ddpm_samples_dict, vae_samples = prediction
 
             if self.save_vae:
-                vae_samples = normalize(vae_samples).cpu()
+                vae_samples = vae_samples.cpu()
                 vae_save_path = os.path.join(self.output_dir, "vae")
                 os.makedirs(vae_save_path, exist_ok=True)
                 self.save_fn(

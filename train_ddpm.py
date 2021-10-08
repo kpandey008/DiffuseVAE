@@ -1,4 +1,3 @@
-# Uses the openai Unet port
 import copy
 import logging
 import os
