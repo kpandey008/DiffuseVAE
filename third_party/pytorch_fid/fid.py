@@ -129,7 +129,7 @@ class NpPathDataset(torch.utils.data.Dataset):
         img = np.load(path).transpose(2, 0, 1)
         if self.transforms is not None:
             img = self.transforms(img)
-        return torch.tensor(img)
+        return torch.tensor(img) * 0.5 + 0.5
 
 
 def get_activations(
