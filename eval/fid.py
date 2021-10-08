@@ -16,17 +16,11 @@ def cli():
     pass
 
 
-@cli.command()
-@click.option("--num-batches", default=1)
-@click.option("--use-v3", default=False, type=bool)
-@click.option("--write-path", default="")
-@click.option("--stats-prefix", default="")
-@click.argument("sample-path")
 def generate_fid_stats(
     samples, use_v3=False, num_batches=1, write_path="", stats_prefix=""
 ):
     inception_feats = get_inception_features(
-        samples, inception_v3=use_v3, num_batches=num_batches
+        samples, inceptionv3=use_v3, num_batches=num_batches
     )
     activations = inception_feats["pool_3"]
     mu, sigma = compute_sample_stats(activations)
@@ -36,7 +30,7 @@ def generate_fid_stats(
         data = {"mu": mu.numpy(), "sigma": sigma.numpy()}
         np.save(os.path.join(write_path, f"precomputed_stats_{stats_prefix}.npz"), data)
 
-    return compute_sample_stats()
+    return mu, sigma
 
 
 @cli.command()
@@ -44,10 +38,18 @@ def generate_fid_stats(
 @click.option("--use-v3", default=False, type=bool)
 @click.option("--write-path", default="")
 @click.option("--stats-prefix", default="")
+@click.option("--mode1", default="numpy", type=click.Choice(["numpy", "image"]))
+@click.option("--mode2", default="numpy", type=click.Choice(["numpy", "image"]))
 @click.argument("sample-path-1")
 @click.argument("sample-path-2")
 def compute_fid_from_samples(
-    sample_path_1, sample_path_2, write_path="", use_v3=False, num_batches=1
+    sample_path_1,
+    sample_path_2,
+    write_path="",
+    use_v3=False,
+    num_batches=1,
+    mode1="numpy",
+    mode2="numpy",
 ):
     if sample_path_1.endswith(".npz"):
         assert os.path.isfile(sample_path_1)
@@ -56,7 +58,9 @@ def compute_fid_from_samples(
         mu_1, sigma_1 = data["mu"], data["sigma"]
     else:
         # Load the samples from the directories
-        samples_1 = tf.convert_to_tensor(load_samples_from_path(sample_path_1))
+        samples_1 = tf.convert_to_tensor(
+            load_samples_from_path(sample_path_1, mode=mode1)
+        )
 
         # Compute sample statistics
         print("Computing Inception stats for set1")
@@ -74,7 +78,9 @@ def compute_fid_from_samples(
         data = np.load(sample_path_2)
         mu_2, sigma_2 = data["mu"], data["sigma"]
     else:
-        samples_2 = tf.convert_to_tensor(load_samples_from_path(sample_path_2))
+        samples_2 = tf.convert_to_tensor(
+            load_samples_from_path(sample_path_2, mode=mode2)
+        )
 
         print("Computing Inception stats for set2")
         mu_2, sigma_2 = generate_fid_stats(

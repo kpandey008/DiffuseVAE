@@ -20,6 +20,7 @@ INCEPTION_DEFAULT_IMAGE_SIZE = 299
 
 
 def get_inception_model(inceptionv3=False):
+    print(f"Using InceptionV3: {inceptionv3}")
     if inceptionv3:
         return tfhub.load(
             "https://tfhub.dev/google/imagenet/inception_v3/feature_vector/4"
@@ -163,7 +164,7 @@ def load_samples_from_path(dirpath, mode="image"):
 
 
 def get_inception_features(samples, inception_v3=False, num_batches=1):
-    # Get the inception network statistics (with "pool_3" and "logits")
+    # Get the inception network activations (with "pool_3" and "logits")
     model = get_inception_model(inceptionv3=inception_v3)
 
     feature_dict = run_inception_distributed(
@@ -190,7 +191,7 @@ def compute_sample_stats(activations):
     # Calculate the unbiased covariance matrix of first activations.
     num_examples_real = tf.cast(tf.shape(input=activations)[0], tf.float64)
     sigma = (
-        num_examples_real / (num_examples_real - 1) * tfp.stats.covariance(activations),
+        num_examples_real / (num_examples_real - 1) * tfp.stats.covariance(activations)
     )
     return m, sigma
 
