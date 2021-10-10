@@ -129,6 +129,8 @@ class NpPathDataset(torch.utils.data.Dataset):
         img = np.load(path).transpose(2, 0, 1)
         if self.transforms is not None:
             img = self.transforms(img)
+
+        # Asuuming numpy arrays between [-1, 1]
         return torch.tensor(img) * 0.5 + 0.5
 
 
@@ -163,7 +165,6 @@ def get_activations(
         )
         batch_size = len(files)
 
-    print(mode)
     dataset = NpPathDataset if mode == "np" else ImagePathDataset
     transforms = None if mode == "np" else TF.ToTensor()
     dataset = dataset(files, transforms=transforms)
