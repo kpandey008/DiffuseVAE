@@ -1,0 +1,44 @@
+data:
+  root: ???
+  name: "cifar10"
+  image_size: 32
+  hflip: True
+  n_channels: 3
+
+model:
+  dim : 128
+  attn_resolutions: "16,"
+  n_residual: 2
+  dim_mults: "1,2,2,2"
+  dropout: 0.1
+  n_heads: 1
+  beta1: 0.0001
+  beta2: 0.02
+  n_timesteps: 1000
+
+training:
+  seed: 0
+  fp16: False
+  use_ema: True
+  use_cond: True
+  ema_decay: 0.9999
+  batch_size: 32
+  epochs: 5000
+  log_step: 1
+  device: "gpu:0"
+  chkpt_interval: 1
+  optimizer: "Adam"
+  lr: 2e-4
+  restore_path: ""
+  results_dir: ???
+  workers: 2
+  grad_clip: 1.0
+  n_anneal_steps: 5000
+  loss: "l2"
+  chkpt_prefix: ""
+
+evaluation:
+  seed: 0
+  device: "gpu:0"
+  n_samples: 50000
+  variance: "fixedlarge"
