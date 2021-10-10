@@ -12,6 +12,7 @@ class DDPMWrapper(pl.LightningModule):
         target_network,
         vae=None,
         lr=2e-5,
+        n_anneal_steps=0,
         loss="l1",
         sample_from="target",
         conditional=True,
@@ -30,6 +31,7 @@ class DDPMWrapper(pl.LightningModule):
 
         self.criterion = nn.MSELoss(reduction="mean") if loss == "l2" else nn.L1Loss()
         self.lr = lr
+        self.n_anneal_steps = n_anneal_steps
         self.eval_mode = eval_mode
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
         self.pred_checkpoints = pred_checkpoints
@@ -93,4 +95,18 @@ class DDPMWrapper(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.online_network.parameters(), lr=self.lr)
-        return optimizer
+
+        # Define the LR scheduler (As in Ho et al.)
+        if self.n_anneal_steps == 0:
+            lr_lambda = lambda step: 1.0
+        else:
+            lr_lambda = lambda step: min(step / self.n_anneal_steps, 1.0)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "step",
+                "strict": False,
+            },
+        }
