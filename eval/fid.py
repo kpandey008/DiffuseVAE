@@ -3,7 +3,7 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from eval.eval_utils import (
+from eval_utils import (
     load_samples_from_path,
     get_inception_features,
     compute_sample_stats,
@@ -20,10 +20,10 @@ def generate_fid_stats(
     samples, use_v3=False, num_batches=1, write_path="", stats_prefix=""
 ):
     inception_feats = get_inception_features(
-        samples, inceptionv3=use_v3, num_batches=num_batches
+        samples, inception_v3=use_v3, num_batches=num_batches
     )
     activations = inception_feats["pool_3"]
-    mu, sigma = compute_sample_stats(activations)
+    mu, sigma = compute_sample_stats(activations.numpy())
 
     if write_path != "":
         # Write mu and sigma
@@ -37,7 +37,6 @@ def generate_fid_stats(
 @click.option("--num-batches", default=1)
 @click.option("--use-v3", default=False, type=bool)
 @click.option("--write-path", default="")
-@click.option("--stats-prefix", default="")
 @click.option("--mode1", default="numpy", type=click.Choice(["numpy", "image"]))
 @click.option("--mode2", default="numpy", type=click.Choice(["numpy", "image"]))
 @click.argument("sample-path-1")
@@ -67,7 +66,7 @@ def compute_fid_from_samples(
         mu_1, sigma_1 = generate_fid_stats(
             samples_1,
             write_path=write_path,
-            inceptionv3=use_v3,
+            use_v3=use_v3,
             num_batches=num_batches,
             stats_prefix="1",
         )
@@ -86,7 +85,7 @@ def compute_fid_from_samples(
         mu_2, sigma_2 = generate_fid_stats(
             samples_2,
             write_path=write_path,
-            inceptionv3=use_v3,
+            use_v3=use_v3,
             num_batches=num_batches,
             stats_prefix="2",
         )

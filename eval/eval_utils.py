@@ -6,11 +6,12 @@ import numpy as np
 import os
 import six
 import tensorflow as tf
-import tensorflow_gan as tfgan
+
 import tensorflow_hub as tfhub
-import tensorflow_probability as tfp
 
 from PIL import Image
+
+from classifier_metrics_numpy import trace_sqrt_product
 
 INCEPTION_TFHUB = "https://tfhub.dev/tensorflow/tfgan/eval/inception/1"
 INCEPTION_OUTPUT = "logits"
@@ -29,6 +30,7 @@ def get_inception_model(inceptionv3=False):
         return tfhub.load(INCEPTION_TFHUB)
 
 
+# TODO: Update this as we add more datasets
 def load_dataset_stats(config):
     """Load the pre-computed dataset statistics."""
     if config.data.dataset == "CIFAR10":
@@ -71,6 +73,54 @@ def classifier_fn_from_tfhub(output_fields, inception_model, return_tensor=False
     return _classifier_fn
 
 
+def run_classifier_fn(
+    input_tensor, classifier_fn, num_batches=1, dtypes=None, name="RunClassifierFn"
+):
+    """Copied from tfgan to avoid tfgan dependency. Runs a network from a TF-Hub module.
+    If there are multiple outputs, cast them to tf.float32.
+    Args:
+      input_tensor: Input tensors.
+      classifier_fn: A function that takes a single argument and returns the
+        outputs of the classifier. If `num_batches` is greater than 1, the
+        structure of the outputs of `classifier_fn` must match the structure of
+        `dtypes`.
+      num_batches: Number of batches to split `tensor` in to in order to
+        efficiently run them through the classifier network. This is useful if
+        running a large batch would consume too much memory, but running smaller
+        batches is feasible.
+      dtypes: If `classifier_fn` returns more than one element or `num_batches` is
+        greater than 1, `dtypes` must have the same structure as the return value
+        of `classifier_fn` but with each output replaced by the expected dtype of
+        the output. If `classifier_fn` returns on element or `num_batches` is 1,
+        then `dtype` can be `None.
+      name: Name scope for classifier.
+    Returns:
+      The output of the module, or just `outputs`.
+    Raises:
+      ValueError: If `classifier_fn` return multiple outputs but `dtypes` isn't
+        specified, or is incorrect.
+    """
+    if num_batches > 1:
+        # Compute the classifier splits using the memory-efficient `map_fn`.
+        input_list = tf.split(input_tensor, num_or_size_splits=num_batches)
+        classifier_outputs = tf.map_fn(
+            fn=classifier_fn,
+            elems=tf.stack(input_list),
+            dtype=dtypes,
+            parallel_iterations=1,
+            back_prop=False,
+            swap_memory=True,
+            name=name,
+        )
+        classifier_outputs = tf.nest.map_structure(
+            lambda x: tf.concat(tf.unstack(x), 0), classifier_outputs
+        )
+    else:
+        classifier_outputs = classifier_fn(input_tensor)
+
+    return classifier_outputs
+
+
 @tf.function
 def run_inception_jit(inputs, inception_model, num_batches=1, inceptionv3=False):
     """Running the inception network. Assuming input is within [0, 255]."""
@@ -79,7 +129,7 @@ def run_inception_jit(inputs, inception_model, num_batches=1, inceptionv3=False)
     else:
         inputs = tf.cast(inputs, tf.float32) / 255.0
 
-    return tfgan.eval.run_classifier_fn(
+    return run_classifier_fn(
         inputs,
         num_batches=num_batches,
         classifier_fn=classifier_fn_from_tfhub(None, inception_model),
@@ -171,7 +221,7 @@ def get_inception_features(samples, inception_v3=False, num_batches=1):
         samples,
         model,
         num_batches=num_batches,
-        inception_v3=inception_v3,
+        inceptionv3=inception_v3,
     )
     return feature_dict
 
@@ -179,41 +229,34 @@ def get_inception_features(samples, inception_v3=False, num_batches=1):
 def compute_sample_stats(activations):
     """A helper function for computing the mean and covariance for FID computation.
     Adapted from _frechet_classifier_distance_from_activations_helper in tfgan"""
-    activations = tf.convert_to_tensor(value=activations)
-    activations.shape.assert_has_rank(2)
+    assert len(activations.shape) == 2
 
     activations_dtype = activations.dtype
-    if activations_dtype != tf.float64:
-        activations = tf.cast(activations, tf.float64)
+    if activations_dtype != np.float64:
+        activations = activations.astype(np.float64)
 
     # Compute mean and covariance matrices of activations.
-    m = tf.reduce_mean(input_tensor=activations, axis=0)
+    m = np.mean(activations, axis=0)
     # Calculate the unbiased covariance matrix of first activations.
-    num_examples_real = tf.cast(tf.shape(input=activations)[0], tf.float64)
-    sigma = (
-        num_examples_real / (num_examples_real - 1) * tfp.stats.covariance(activations)
-    )
+    num_examples = float(activations.shape[0])
+    sigma = num_examples / (num_examples - 1) * np.cov(activations, rowvar=False)
     return m, sigma
 
 
-def calculate_fid(m, m_w, sigma, sigma_w, dtype=tf.float64):
+def calculate_fid(m, m_w, sigma, sigma_w, dtype=np.float64):
     """Returns the Frechet distance given the sample mean and covariance.
     Adapted from _calculate_fid in tfgan"""
     # Find the Tr(sqrt(sigma sigma_w)) component of FID
-    sqrt_trace_component = tfgan.eval.classifier_metrics.trace_sqrt_product(
-        sigma, sigma_w
-    )
+    sqrt_trace_component = trace_sqrt_product(sigma, sigma_w)
 
     # Compute the two components of FID.
 
     # First the covariance component.
     # Here, note that trace(A + B) = trace(A) + trace(B)
-    trace = tf.linalg.trace(sigma + sigma_w) - 2.0 * sqrt_trace_component
+    trace = np.trace(sigma + sigma_w) - 2.0 * sqrt_trace_component
 
     # Next the distance between means.
-    mean = tf.reduce_sum(
-        input_tensor=tf.math.squared_difference(m, m_w)
-    )  # Equivalent to L2 but more stable.
+    mean = np.sum(np.square(m - m_w))  # Equivalent to L2 but more stable.
     fid = trace + mean
-    fid = tf.cast(fid, dtype)
+    fid = fid.astype(dtype)
     return fid
