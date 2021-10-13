@@ -94,7 +94,9 @@ class DDPMWrapper(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.online_network.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(
+            self.online_network.decoder.parameters(), lr=self.lr
+        )
 
         # Define the LR scheduler (As in Ho et al.)
         if self.n_anneal_steps == 0:

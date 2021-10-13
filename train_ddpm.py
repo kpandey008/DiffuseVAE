@@ -59,15 +59,23 @@ def train(config):
         num_heads=config.model.n_heads,
     )
 
-    ddpm = DDPM(
+    ema_decoder = copy.deepcopy(decoder)
+
+    online_ddpm = DDPM(
         decoder,
         beta_1=config.model.beta1,
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
     )
+    target_ddpm = DDPM(
+        ema_decoder,
+        beta_1=config.model.beta1,
+        beta_2=config.model.beta2,
+        T=config.model.n_timesteps,
+    )
     ddpm_wrapper = DDPMWrapper(
-        ddpm,
-        copy.deepcopy(ddpm),
+        online_ddpm,
+        target_ddpm,
         lr=lr,
         n_anneal_steps=config.training.n_anneal_steps,
         loss=config.training.loss,

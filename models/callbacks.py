@@ -44,8 +44,8 @@ class EMAWeightUpdate(Callback):
         dataloader_idx: int,
     ) -> None:
         # get networks
-        online_net = pl_module.online_network
-        target_net = pl_module.target_network
+        online_net = pl_module.online_network.decoder
+        target_net = pl_module.target_network.decoder
 
         # update weights
         self.update_weights(online_net, target_net)
