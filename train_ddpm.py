@@ -59,7 +59,10 @@ def train(config):
         num_heads=config.model.n_heads,
     )
 
+    # EMA parameters are non-trainable
     ema_decoder = copy.deepcopy(decoder)
+    for p in ema_decoder.parameters():
+        p.requires_grad = False
 
     online_ddpm = DDPM(
         decoder,
@@ -116,7 +119,7 @@ def train(config):
         # Disable find_unused_parameters when using DDP training for performance reasons
         from pytorch_lightning.plugins import DDPPlugin
 
-        train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=True)
+        train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
         loader_kws["persistent_workers"] = True
     elif device == "tpu":
         train_kwargs["tpu_cores"] = 8
