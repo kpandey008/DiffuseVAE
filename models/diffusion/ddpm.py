@@ -6,7 +6,7 @@ from models.diffusion.unet import Unet
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
-    out = a.gather(-1, t)
+    out = a.gather(-1, t).float()
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
 
 
@@ -21,71 +21,54 @@ class DDPM(nn.Module):
         self.beta_2 = beta_2
         self.var_type = var_type
 
-        # Flag to keep track of device settings
-        self.setup_consts = False
-
-    def setup_precomputed_const(self, dev):
-        # Main
-        self.betas = torch.linspace(self.beta_1, self.beta_2, steps=self.T, device=dev)
-        self.alphas = 1 - self.betas
-        self.alpha_bar = torch.cumprod(self.alphas, dim=0)
-        self.alpha_bar_shifted = torch.cat(
-            [torch.tensor([1.0], device=dev), self.alpha_bar[:-1]]
+        # Main constants
+        self.register_buffer(
+            "betas", torch.linspace(self.beta_1, self.beta_2, steps=self.T).double()
         )
+        dev = self.betas.device
+        alphas = 1.0 - self.betas
+        alpha_bar = torch.cumprod(alphas, dim=0)
+        alpha_bar_shifted = torch.cat([torch.tensor([1.0], device=dev), alpha_bar[:-1]])
 
-        assert self.alpha_bar_shifted.shape == torch.Size(
+        assert alpha_bar_shifted.shape == torch.Size(
             [
                 self.T,
             ]
         )
 
         # Auxillary consts
-        self.sqrt_alpha_bar = torch.sqrt(self.alpha_bar)
-        self.minus_sqrt_alpha_bar = torch.sqrt(1.0 - self.alpha_bar)
-        self.sqrt_recip_alphas_cumprod = torch.sqrt(1.0 / self.alpha_bar)
-        self.sqrt_recipm1_alphas_cumprod = torch.sqrt(1.0 / self.alpha_bar - 1)
+        self.register_buffer("sqrt_alpha_bar", torch.sqrt(alpha_bar))
+        self.register_buffer("minus_sqrt_alpha_bar", torch.sqrt(1.0 - alpha_bar))
+        self.register_buffer("sqrt_recip_alphas_cumprod", torch.sqrt(1.0 / alpha_bar))
+        self.register_buffer(
+            "sqrt_recipm1_alphas_cumprod", torch.sqrt(1.0 / alpha_bar - 1)
+        )
 
         # Posterior q(x_t-1|x_t,x_0,t) covariance of the forward process
-        self.post_variance = (
-            self.betas * (1.0 - self.alpha_bar_shifted) / (1.0 - self.alpha_bar)
+        self.register_buffer(
+            "post_variance", self.betas * (1.0 - alpha_bar_shifted) / (1.0 - alpha_bar)
         )
         # Clipping because post_variance is 0 before the chain starts
-        self.post_log_variance_clipped = torch.log(
-            torch.cat(
-                [
-                    torch.tensor([self.post_variance[1]], device=dev),
-                    self.post_variance[1:],
-                ]
-            )
+        self.register_buffer(
+            "post_log_variance_clipped",
+            torch.log(
+                torch.cat(
+                    [
+                        torch.tensor([self.post_variance[1]], device=dev),
+                        self.post_variance[1:],
+                    ]
+                )
+            ),
         )
-        self.p_variance, self.p_log_variance = {
-            # for fixedlarge, we set the initial (log-)variance like so
-            # to get a better decoder log likelihood.
-            "fixedlarge": (
-                self.betas,
-                torch.log(
-                    torch.cat(
-                        [
-                            torch.tensor([self.post_variance[1]], device=dev),
-                            self.betas[1:],
-                        ]
-                    )
-                ),
-            ),
-            "fixedsmall": (
-                self.post_variance,
-                self.post_log_variance_clipped,
-            ),
-        }[self.var_type]
 
         # q(x_t-1 | x_t, x_0) mean coefficients
-        self.post_coeff_1 = (
-            self.betas * torch.sqrt(self.alpha_bar_shifted) / (1.0 - self.alpha_bar)
+        self.register_buffer(
+            "post_coeff_1",
+            self.betas * torch.sqrt(alpha_bar_shifted) / (1.0 - alpha_bar),
         )
-        self.post_coeff_2 = (
-            torch.sqrt(self.alphas)
-            * (1 - self.alpha_bar_shifted)
-            / (1 - self.alpha_bar)
+        self.register_buffer(
+            "post_coeff_2",
+            torch.sqrt(alphas) * (1 - alpha_bar_shifted) / (1 - alpha_bar),
         )
 
     def _predict_xstart_from_eps(self, x_t, t, eps):
@@ -120,20 +103,33 @@ class DDPM(nn.Module):
         )
 
         # Extract posterior variance
-        post_variance = extract(self.p_variance, t_, x_t.shape)
-        post_log_variance = extract(self.p_log_variance, t_, x_t.shape)
+        p_variance, p_log_variance = {
+            # for fixedlarge, we set the initial (log-)variance like so
+            # to get a better decoder log likelihood.
+            "fixedlarge": (
+                self.betas,
+                torch.log(
+                    torch.cat(
+                        [
+                            torch.tensor([self.post_variance[1]], device=x_t.device),
+                            self.betas[1:],
+                        ]
+                    )
+                ),
+            ),
+            "fixedsmall": (
+                self.post_variance,
+                self.post_log_variance_clipped,
+            ),
+        }[self.var_type]
+        post_variance = extract(p_variance, t_, x_t.shape)
+        post_log_variance = extract(p_log_variance, t_, x_t.shape)
         return post_mean, post_variance, post_log_variance
 
     def sample(self, x_t, cond=None, n_steps=None, checkpoints=[]):
         # The sampling process goes here!
         x = x_t
         sample_dict = {}
-
-        # Set device and constants
-        dev = x_t.device
-        if not self.setup_consts:
-            self.setup_precomputed_const(dev)
-            self.setup_consts = True
 
         num_steps = self.T if n_steps is None else n_steps
         checkpoints = [num_steps] if checkpoints == [] else checkpoints
@@ -149,7 +145,7 @@ class DDPM(nn.Module):
                 cond=cond,
             )
             nonzero_mask = (
-                torch.tensor(t != 0, device=dev)
+                torch.tensor(t != 0, device=x.device)
                 .float()
                 .view(-1, *([1] * (len(x_t.shape) - 1)))
             )  # no noise when t == 0
@@ -170,10 +166,6 @@ class DDPM(nn.Module):
         )
 
     def forward(self, x, eps, t, low_res=None):
-        if not self.setup_consts:
-            self.setup_precomputed_const(x.device)
-            self.setup_consts = True
-
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t)
         return self.decoder(x_t, t, low_res=low_res)
