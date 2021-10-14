@@ -140,7 +140,7 @@ def train(config):
     )
 
     # Gradient Clipping by global norm (0 value indicates no clipping) (as in Ho et al.)
-    train_kwargs["gradient_clip_val"] = config.training.grad_clip
+    # train_kwargs["gradient_clip_val"] = config.training.grad_clip
 
     logger.info(f"Running Trainer with kwargs: {train_kwargs}")
     trainer = pl.Trainer(**train_kwargs)

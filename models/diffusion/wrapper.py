@@ -69,7 +69,6 @@ class DDPMWrapper(pl.LightningModule):
 
         # Compute loss
         loss = self.criterion(eps, eps_pred)
-        self.log("loss", loss)
 
         # Clip gradients and Optimize
         optim.zero_grad()
@@ -79,6 +78,7 @@ class DDPMWrapper(pl.LightningModule):
 
         # Scheduler step
         lr_sched.step()
+        self.log("loss", loss, prog_bar=True)
         return loss
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
