@@ -36,6 +36,9 @@ class DDPMWrapper(pl.LightningModule):
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
         self.pred_checkpoints = pred_checkpoints
 
+        # Disable automatic optimization
+        self.automatic_optimization = False
+
     def forward(self, x, cond=None, n_steps=None, checkpoints=[]):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
@@ -43,6 +46,10 @@ class DDPMWrapper(pl.LightningModule):
         return sample_nw.sample(x, cond=cond, n_steps=n_steps, checkpoints=checkpoints)
 
     def training_step(self, batch, batch_idx):
+        # Optimizers
+        optim = self.optimizers()
+        lr_sched = self.lr_schedulers()
+
         cond = None
         if self.conditional:
             cond, x = batch
@@ -63,6 +70,15 @@ class DDPMWrapper(pl.LightningModule):
         # Compute loss
         loss = self.criterion(eps, eps_pred)
         self.log("loss", loss)
+
+        # Clip gradients and Optimize
+        optim.zero_grad()
+        self.manual_backward(loss)
+        torch.nn.utils.clip_grad_norm_(self.online_network.decoder.parameters(), 1.0)
+        optim.step()
+
+        # Scheduler step
+        lr_sched.step()
         return loss
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
