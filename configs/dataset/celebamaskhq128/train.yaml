@@ -6,6 +6,7 @@ ddpm:
     image_size: 128
     hflip: True
     n_channels: 3
+    norm: True
 
   model:
     dim : 128

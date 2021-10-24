@@ -56,7 +56,7 @@ def get_resnet_models(backbone_name, pretrained=False, **kwargs):
     return backbone
 
 
-def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
+def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
     if name == "celeba":
         transform = T.Compose(
             [
@@ -64,7 +64,7 @@ def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
                 T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
             ]
         )
-        dataset = CelebADataset(root, transform=transform, **kwargs)
+        dataset = CelebADataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "celebamaskhq":
         transform = T.Compose(
             [
@@ -72,10 +72,9 @@ def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
                 T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
             ]
         )
-        dataset = CelebAMaskHQDataset(root, transform=transform, **kwargs)
+        dataset = CelebAMaskHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
-        transform = None
-        dataset = ReconstructionDataset(root, transform=transform, **kwargs)
+        dataset = ReconstructionDataset(root, norm=norm, **kwargs)
     elif name == "cifar10":
         assert image_size == 32
         transform = T.Compose(
@@ -83,7 +82,7 @@ def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
                 T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
             ]
         )
-        dataset = CIFAR10Dataset(root, transform=transform, norm=True, **kwargs)
+        dataset = CIFAR10Dataset(root, transform=transform, norm=norm, **kwargs)
     else:
         raise NotImplementedError(
             f"The dataset {name} does not exist in our datastore."

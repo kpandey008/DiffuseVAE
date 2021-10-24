@@ -1,7 +1,7 @@
-import numpy as np
 import os
-import torchvision.transforms as T
 
+import numpy as np
+import torch
 from PIL import Image
 from torch.utils.data import Dataset
 from tqdm import tqdm
@@ -10,11 +10,12 @@ from tqdm import tqdm
 # A very simplistic implementation of the CelebA dataset supporting only images and no annotations
 # TODO: Add functionality to download CelebA-MaskHQ and setup the dataset automatically
 class CelebAMaskHQDataset(Dataset):
-    def __init__(self, root, subsample_size=None, transform=None, **kwargs):
+    def __init__(self, root, norm=True, subsample_size=None, transform=None, **kwargs):
         if not os.path.isdir(root):
             raise ValueError(f"The specified root: {root} does not exist")
         self.root = root
         self.transform = transform
+        self.norm = norm
 
         self.images = []
 
@@ -36,7 +37,10 @@ class CelebAMaskHQDataset(Dataset):
         if self.transform is not None:
             img = self.transform(img)
 
-        return img
+        if self.norm:
+            img = (np.asarray(img).astype(np.float) / 127.5) - 1.0
+
+        return torch.from_numpy(img)
 
     def __len__(self):
         return len(self.images)

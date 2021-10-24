@@ -7,12 +7,15 @@ from torchvision.datasets import CIFAR10
 
 
 class CIFAR10Dataset(Dataset):
-    def __init__(self, root, norm=True, **kwargs):
+    def __init__(self, root, norm=True, transform=None, **kwargs):
         if not os.path.isdir(root):
             raise ValueError(f"The specified root: {root} does not exist")
         self.root = root
         self.norm = norm
-        self.dataset = CIFAR10(self.root, train=True, download=True, **kwargs)
+        self.transform = transform
+        self.dataset = CIFAR10(
+            self.root, train=True, download=True, transform=transform, **kwargs
+        )
 
     def __getitem__(self, idx):
         img, _ = self.dataset[idx]

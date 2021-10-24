@@ -34,7 +34,9 @@ def train(config):
     root = config.data.root
     d_type = config.data.name
     image_size = config.data.image_size
-    dataset = get_dataset(d_type, root, image_size, flip=config.data.hflip)
+    dataset = get_dataset(
+        d_type, root, image_size, norm=config.data.norm, flip=config.data.hflip
+    )
     N = len(dataset)
     batch_size = config.training.batch_size
     batch_size = min(N, batch_size)
