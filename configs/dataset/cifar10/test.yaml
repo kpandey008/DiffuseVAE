@@ -33,6 +33,9 @@ ddpm:
     sample_prefix: ""
     temp: 1.0
     save_mode: image
+  
+  interpolation:
+    n_steps: 10
 
 # VAE config used for VAE training
 vae:

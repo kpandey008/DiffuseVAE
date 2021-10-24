@@ -131,3 +131,7 @@ def sample_cond(config):
     test_kwargs["default_root_dir"] = config_ddpm.evaluation.save_path
     trainer = pl.Trainer(**test_kwargs)
     trainer.predict(ddpm_wrapper, val_loader)
+
+
+if __name__ == "__main__":
+    sample_cond()

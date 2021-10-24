@@ -91,6 +91,38 @@ def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
     return dataset
 
 
+def plot_interpolations(interpolations, save_path=None, figsize=(10, 5)):
+    N = len(interpolations)
+    # Plot all the quantities
+    fig, ax = plt.subplots(nrows=1, ncols=N, figsize=figsize)
+
+    for i, inter in enumerate(interpolations):
+        ax[i].imshow(inter.squeeze().permute(1, 2, 0))
+        ax[i].axis("off")
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, pad_inches=0)
+
+
+def compare_interpolations(
+    interpolations_1, interpolations_2, save_path=None, figsize=(10, 2)
+):
+    assert len(interpolations_1) == len(interpolations_2)
+    N = len(interpolations_1)
+    # Plot all the quantities
+    fig, ax = plt.subplots(nrows=2, ncols=N, figsize=figsize)
+
+    for i, (inter_1, inter_2) in enumerate(zip(interpolations_1, interpolations_2)):
+        ax[0, i].imshow(inter_1.squeeze().permute(1, 2, 0))
+        ax[0, i].axis("off")
+
+        ax[1, i].imshow(inter_2.squeeze().permute(1, 2, 0))
+        ax[1, i].axis("off")
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, pad_inches=0)
+
+
 def convert_to_np(obj):
     obj = obj.permute(0, 2, 3, 1).contiguous()
     obj = obj.detach().cpu().numpy()
