@@ -65,7 +65,7 @@ def get_dataset(name, root, image_size, flip=False, transform=None, **kwargs):
             ]
         )
         dataset = CelebADataset(root, transform=transform, **kwargs)
-    elif name == "celeba-hq":
+    elif name == "celebamaskhq":
         transform = T.Compose(
             [
                 T.Resize(image_size),
