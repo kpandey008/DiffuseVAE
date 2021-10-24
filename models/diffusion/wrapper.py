@@ -14,6 +14,7 @@ class DDPMWrapper(pl.LightningModule):
         lr=2e-5,
         n_anneal_steps=0,
         loss="l1",
+        grad_clip_val=1.0,
         sample_from="target",
         conditional=True,
         eval_mode="sample",
@@ -31,6 +32,7 @@ class DDPMWrapper(pl.LightningModule):
 
         self.criterion = nn.MSELoss(reduction="mean") if loss == "l2" else nn.L1Loss()
         self.lr = lr
+        self.grad_clip_val = grad_clip_val
         self.n_anneal_steps = n_anneal_steps
         self.eval_mode = eval_mode
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
@@ -73,7 +75,9 @@ class DDPMWrapper(pl.LightningModule):
         # Clip gradients and Optimize
         optim.zero_grad()
         self.manual_backward(loss)
-        torch.nn.utils.clip_grad_norm_(self.online_network.decoder.parameters(), 1.0)
+        torch.nn.utils.clip_grad_norm_(
+            self.online_network.decoder.parameters(), self.grad_clip_val
+        )
         optim.step()
 
         # Scheduler step

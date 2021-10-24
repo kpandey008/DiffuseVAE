@@ -1,0 +1,46 @@
+# DDPM config used for DDPM training
+ddpm:
+  data:
+    root: ???
+    name: "cifar10"
+    image_size: 32
+    hflip: True
+    n_channels: 3
+
+  model:
+    dim : 128
+    attn_resolutions: "16,"
+    n_residual: 2
+    dim_mults: "1,2,2,2"
+    dropout: 0.1
+    n_heads: 1
+    beta1: 0.0001
+    beta2: 0.02
+    n_timesteps: 1000
+
+  evaluation:
+    chkpt_path: ???
+    seed: 0
+    device: "gpu:0"
+    n_samples: 50000
+    variance: "fixedlarge"
+
+# VAE config used for VAE training
+vae:
+  data:
+    root: ???
+    name: "cifar10"
+    image_size: 32
+    n_channels: 3
+
+  model:
+    enc_block_config : "32x7,32d2,32t16,16x4,16d2,16t8,8x4,8d2,8t4,4x3,4d4,4t1,1x3"
+    enc_channel_config: "32:64,16:128,8:256,4:256,1:512"
+    dec_block_config: "1x1,1u4,1t4,4x2,4u2,4t8,8x3,8u2,8t16,16x7,16u2,16t32,32x15"
+    dec_channel_config: "32:64,16:128,8:256,4:256,1:512"
+
+  evaluation:
+    chkpt_path: ???
+    seed: 0
+    device: "gpu:0"
+    n_samples: 50000

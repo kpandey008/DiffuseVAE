@@ -21,10 +21,10 @@ def __parse_str(s):
     return [int(s) for s in split if s != "" and s is not None]
 
 
-@hydra.main(config_path="configs", config_name="default")
+@hydra.main(config_path="configs")
 def train(config):
     # Get config and setup
-    config = config.datasets
+    config = config.dataset.ddpm
     print(OmegaConf.to_yaml(config))
 
     # Set seed
@@ -83,6 +83,7 @@ def train(config):
         n_anneal_steps=config.training.n_anneal_steps,
         loss=config.training.loss,
         conditional=use_cond,
+        grad_clip_val=config.training.grad_clip,
     )
 
     # Trainer
