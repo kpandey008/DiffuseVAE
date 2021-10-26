@@ -61,7 +61,7 @@ def generate_recons(config):
     decoder.eval()
     ema_decoder.eval()
 
-    ddpm_cls = DDPMv2 if config.evaluation.type == "form2" else DDPM
+    ddpm_cls = DDPMv2 if config_ddpm.evaluation.type == "form2" else DDPM
     online_ddpm = ddpm_cls(
         decoder,
         beta_1=config_ddpm.model.beta1,
@@ -88,13 +88,13 @@ def generate_recons(config):
         strict=False,
         pred_steps=n_steps,
         eval_mode="recons",
-        data_norm=config.data.norm,
-        temp=config.evaluation.temp,
+        data_norm=config_ddpm.data.norm,
+        temp=config_ddpm.evaluation.temp,
     )
 
     # Create predict dataset of reconstructions
     recons_dataset = ReconstructionDataset(
-        config_ddpm.data.root, norm=config.data.norm, subsample_size=n_samples
+        config_ddpm.data.root, norm=config_ddpm.data.norm, subsample_size=n_samples
     )
     ddpm_latent_dataset = TensorDataset(
         torch.randn(n_samples, 3, image_size, image_size)

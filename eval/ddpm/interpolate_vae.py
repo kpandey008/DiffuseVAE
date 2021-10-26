@@ -23,7 +23,7 @@ def interpolate_vae(config):
 
     dev, _ = configure_device(config_ddpm.evaluation.device)
     image_size = config_ddpm.data.image_size
-    z_dim = config_ddpm.model.z_dim
+    z_dim = config_vae.model.z_dim
     n_steps = config_ddpm.evaluation.n_steps
 
     # Lambdas for interpolation
@@ -126,12 +126,12 @@ def interpolate_vae(config):
     save_as_images(
         cat_ddpm_samples,
         file_name=os.path.join(save_path, "inter_ddpm"),
-        denorm=config.data.norm,
+        denorm=config_ddpm.data.norm,
     )
     save_as_images(
         cat_vae_samples,
         file_name=os.path.join(save_path, "inter_vae"),
-        denorm=config.data.norm,
+        denorm=config_ddpm.data.norm,
     )
 
     # Compare
