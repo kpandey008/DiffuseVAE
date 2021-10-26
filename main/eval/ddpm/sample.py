@@ -1,4 +1,10 @@
 # Helper script to sample from an unconditional DDPM model
+# Add project directory to sys.path
+import os
+import sys
+
+p = os.path.abspath(".")
+sys.path.insert(1, p)
 
 import copy
 
@@ -17,7 +23,7 @@ def __parse_str(s):
     return [int(s) for s in split if s != "" and s is not None]
 
 
-@hydra.main(config_path="configs")
+@hydra.main(config_path=os.path.join(p, "configs"))
 def sample(config):
     # Seed and setup
     config = config.dataset.ddpm

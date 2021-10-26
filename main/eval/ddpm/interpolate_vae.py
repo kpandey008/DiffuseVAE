@@ -1,3 +1,10 @@
+# Add project directory to sys.path
+import os
+import sys
+
+p = os.path.abspath(".")
+sys.path.insert(1, p)
+
 import copy
 import os
 
@@ -15,7 +22,7 @@ def __parse_str(s):
     return [int(s) for s in split if s != "" and s is not None]
 
 
-@hydra.main(config_path="configs")
+@hydra.main(config_path=os.path.join(p, "configs"))
 def interpolate_vae(config):
     config_ddpm = config.dataset.ddpm
     config_vae = config.dataset.vae
