@@ -97,7 +97,7 @@ class DDPMv2(nn.Module):
 
         # Generate the reconstruction from x_t
         x_recons = self._predict_xstart_from_eps(
-            x_t, t_, self.decoder(x_t, t_, low_res=cond)
+            x_t, t_, self.decoder(x_t, t_, low_res=cond), cond=cond
         )
 
         # Clip

@@ -37,6 +37,9 @@ class ReconstructionDataset(Dataset):
 
 
 if __name__ == "__main__":
-    root = "/data/kushagrap20/vaedm/reconstructions"
-    dataset = ReconstructionDataset(root)
+    root = "/data/kushagrap20/vaedm/reconstructions_celebahq"
+    dataset = ReconstructionDataset(root, norm=True)
     print(len(dataset))
+    recons, img = dataset[0]
+    print(torch.min(img))
+    print(torch.max(img))

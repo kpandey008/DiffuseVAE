@@ -79,6 +79,11 @@ def train(config):
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
     )
+
+    assert isinstance(online_ddpm, ddpm_cls)
+    assert isinstance(target_ddpm, ddpm_cls)
+    logger.info(f"Using DDPM with type: {ddpm_cls} and data norm: {config.data.norm}")
+
     ddpm_wrapper = DDPMWrapper(
         online_ddpm,
         target_ddpm,
@@ -147,7 +152,6 @@ def train(config):
     # train_kwargs["gradient_clip_val"] = config.training.grad_clip
 
     logger.info(f"Running Trainer with kwargs: {train_kwargs}")
-    logger.info(f"Using DDPM with type: {ddpm_type} and data norm: {config.data.norm}")
     trainer = pl.Trainer(**train_kwargs)
     trainer.fit(ddpm_wrapper, train_dataloader=loader)
 
