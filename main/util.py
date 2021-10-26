@@ -57,6 +57,7 @@ def get_resnet_models(backbone_name, pretrained=False, **kwargs):
 
 
 def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
+    assert isinstance(norm, bool)
     if name == "celeba":
         transform = T.Compose(
             [
