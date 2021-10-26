@@ -10,7 +10,7 @@ from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
 from models.callbacks import EMAWeightUpdate
-from models.diffusion import DDPM, DDPMWrapper, SuperResModel, UNetModel
+from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel, UNetModel
 from util import configure_device, get_dataset
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ def __parse_str(s):
 def train(config):
     # Get config and setup
     config = config.dataset.ddpm
-    print(OmegaConf.to_yaml(config))
+    logger.info(OmegaConf.to_yaml(config))
 
     # Set seed
     seed_everything(config.training.seed, workers=True)
@@ -45,10 +45,10 @@ def train(config):
     lr = config.training.lr
     attn_resolutions = __parse_str(config.model.attn_resolutions)
     dim_mults = __parse_str(config.model.dim_mults)
-    use_cond = config.training.use_cond
+    ddpm_type = config.training.type
 
     # Use the superres model for conditional training
-    decoder_cls = UNetModel if not use_cond else SuperResModel
+    decoder_cls = UNetModel if ddpm_type == "uncond" else SuperResModel
     decoder = decoder_cls(
         in_channels=config.data.n_channels,
         model_channels=config.model.dim,
@@ -66,13 +66,14 @@ def train(config):
     for p in ema_decoder.parameters():
         p.requires_grad = False
 
-    online_ddpm = DDPM(
+    ddpm_cls = DDPMv2 if ddpm_type == "form2" else DDPM
+    online_ddpm = ddpm_cls(
         decoder,
         beta_1=config.model.beta1,
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
     )
-    target_ddpm = DDPM(
+    target_ddpm = ddpm_cls(
         ema_decoder,
         beta_1=config.model.beta1,
         beta_2=config.model.beta2,
@@ -84,7 +85,7 @@ def train(config):
         lr=lr,
         n_anneal_steps=config.training.n_anneal_steps,
         loss=config.training.loss,
-        conditional=use_cond,
+        conditional=False if ddpm_type == "uncond" else True,
         grad_clip_val=config.training.grad_clip,
     )
 
@@ -146,6 +147,7 @@ def train(config):
     # train_kwargs["gradient_clip_val"] = config.training.grad_clip
 
     logger.info(f"Running Trainer with kwargs: {train_kwargs}")
+    logger.info(f"Using DDPM with type: {ddpm_type} and data norm: {config.data.norm}")
     trainer = pl.Trainer(**train_kwargs)
     trainer.fit(ddpm_wrapper, train_dataloader=loader)
 

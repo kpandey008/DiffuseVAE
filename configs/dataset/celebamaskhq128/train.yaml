@@ -23,7 +23,7 @@ ddpm:
     seed: 0
     fp16: False
     use_ema: True
-    use_cond: True
+    type: 'form1'
     ema_decay: 0.9999
     batch_size: 8
     epochs: 5000
