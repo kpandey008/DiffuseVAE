@@ -132,23 +132,28 @@ def convert_to_np(obj):
     return obj_list
 
 
-def save_as_images(obj, file_name="output"):
+def save_as_images(obj, file_name="output", denorm=True):
     # Saves predictions as png images (useful for Sample generation)
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
-        out = ((out + 1) * 127.5).clip(0, 255).astype(np.uint8)
+        if denorm:
+            out = ((out + 1) * 127.5).clip(0, 255).astype(np.uint8)
+        else:
+            out = (out * 255).clip(0, 255).astype(np.uint8)
         img_out = Image.fromarray(out)
         current_file_name = file_name + "_%d.png" % i
         logger.info("Saving image to {}".format(current_file_name))
         img_out.save(current_file_name, "png")
 
 
-def save_as_np(obj, file_name="output"):
+def save_as_np(obj, file_name="output", denorm=True):
     # Saves predictions as numpy arrays between -1 and 1 (useful for FID computation)
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
+        if denorm:
+            out = (out + 1) / 2
         current_file_name = file_name + "_%d.npy" % i
         logger.info("Saving image to {}".format(current_file_name))
         np.save(current_file_name, out)

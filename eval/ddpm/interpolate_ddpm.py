@@ -3,11 +3,11 @@ import os
 
 import hydra
 import torch
-from models.diffusion import DDPM, DDPMWrapper, SuperResModel
+from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel
 from models.vae import VAE
 from pytorch_lightning.utilities.seed import seed_everything
 from tqdm import tqdm
-from util import plot_interpolations, configure_device, save_as_images
+from util import configure_device, plot_interpolations, save_as_images
 
 
 def __parse_str(s):
@@ -59,17 +59,20 @@ def interpolate_ddpm(config):
     decoder.eval()
     ema_decoder.eval()
 
-    online_ddpm = DDPM(
+    ddpm_cls = DDPMv2 if config_ddpm.evaluation.type == "form2" else DDPM
+    online_ddpm = ddpm_cls(
         decoder,
         beta_1=config_ddpm.model.beta1,
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
+        var_type=config_ddpm.evaluation.variance,
     )
-    target_ddpm = DDPM(
+    target_ddpm = ddpm_cls(
         ema_decoder,
         beta_1=config_ddpm.model.beta1,
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
+        var_type=config_ddpm.evaluation.variance,
     )
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         config_ddpm.evaluation.chkpt_path,
@@ -79,7 +82,8 @@ def interpolate_ddpm(config):
         conditional=True,
         strict=False,
         pred_steps=n_steps,
-        eval_mode="recons",
+        data_norm=config_ddpm.data.norm,
+        temp=config_ddpm.evaluation.temp,
     )
 
     ddpm_wrapper.to(dev)
@@ -103,6 +107,10 @@ def interpolate_ddpm(config):
             1, 3, image_size, image_size, device=dev
         )
 
+        if config_ddpm.evaluation.type == "form2":
+            x_t1 = recons_inter + x_t1
+            x_t2 = recons_inter + x_t2
+
         for idx, l in tqdm(enumerate(lam)):
             # Sample from DDPM
             x_t_inter = x_t1 * l + x_t2 * (1 - l)
@@ -119,8 +127,16 @@ def interpolate_ddpm(config):
     save_path = config_ddpm.evaluation.save_path
     save_path = os.path.join(save_path, str(n_steps))
     os.makedirs(save_path, exist_ok=True)
-    save_as_images(cat_ddpm_samples, file_name=os.path.join(save_path, "inter_ddpm"))
-    save_as_images(cat_vae_samples, file_name=os.path.join(save_path, "inter_vae"))
+    save_as_images(
+        cat_ddpm_samples,
+        file_name=os.path.join(save_path, "inter_ddpm"),
+        denorm=config.data.norm,
+    )
+    save_as_images(
+        cat_vae_samples,
+        file_name=os.path.join(save_path, "inter_vae"),
+        denorm=config.data.norm,
+    )
 
     # Compare
     save_path = config_ddpm.evaluation.save_path

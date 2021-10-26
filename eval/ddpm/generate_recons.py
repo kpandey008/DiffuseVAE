@@ -1,3 +1,5 @@
+# Helper script to generate reconstructions from a conditional DDPM model
+
 import copy
 
 import hydra
@@ -6,7 +8,7 @@ import torch
 from datasets.latent import ZipDataset
 from datasets.recons import ReconstructionDataset
 from models.callbacks import ImageWriter
-from models.diffusion import DDPM, DDPMWrapper, SuperResModel
+from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel
 from models.vae import VAE
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader, TensorDataset
@@ -59,17 +61,20 @@ def generate_recons(config):
     decoder.eval()
     ema_decoder.eval()
 
-    online_ddpm = DDPM(
+    ddpm_cls = DDPMv2 if config.evaluation.type == "form2" else DDPM
+    online_ddpm = ddpm_cls(
         decoder,
         beta_1=config_ddpm.model.beta1,
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
+        var_type=config_ddpm.evaluation.variance,
     )
-    target_ddpm = DDPM(
+    target_ddpm = ddpm_cls(
         ema_decoder,
         beta_1=config_ddpm.model.beta1,
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
+        var_type=config_ddpm.evaluation.variance,
     )
 
     # NOTE: Using strict=False since the VAE model is not included
@@ -83,6 +88,8 @@ def generate_recons(config):
         strict=False,
         pred_steps=n_steps,
         eval_mode="recons",
+        data_norm=config.data.norm,
+        temp=config.evaluation.temp,
     )
 
     # Create predict dataset of reconstructions
@@ -128,6 +135,7 @@ def generate_recons(config):
         sample_prefix=config_ddpm.evaluation.sample_prefix,
         save_mode=config_ddpm.evaluation.save_mode,
         save_vae=config_ddpm.evaluation.save_vae,
+        is_norm=config_ddpm.data.norm,
     )
 
     test_kwargs["callbacks"] = [write_callback]

@@ -71,6 +71,7 @@ class ImageWriter(BasePredictionWriter):
         sample_prefix="",
         save_vae=False,
         save_mode="image",
+        is_norm=True,
     ):
         super().__init__(write_interval)
         assert eval_mode in ["sample", "recons"]
@@ -81,6 +82,7 @@ class ImageWriter(BasePredictionWriter):
         self.conditional = conditional
         self.sample_prefix = sample_prefix
         self.save_vae = save_vae
+        self.is_norm = is_norm
         self.save_fn = save_as_images if save_mode == "image" else save_as_np
 
     def write_on_batch_end(
@@ -107,6 +109,7 @@ class ImageWriter(BasePredictionWriter):
                         vae_save_path,
                         f"output_vae_{self.sample_prefix}_{rank}_{batch_idx}",
                     ),
+                    denorm=self.is_norm,
                 )
         else:
             ddpm_samples_dict = prediction
@@ -128,6 +131,7 @@ class ImageWriter(BasePredictionWriter):
                 file_name=os.path.join(
                     img_save_path, f"output_{self.sample_prefix }_{rank}_{batch_idx}"
                 ),
+                denorm=self.is_norm,
             )
 
         # FIXME: This is currently broken. Separate this from the core logic

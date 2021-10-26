@@ -1,10 +1,12 @@
+# Helper script to sample from a conditional DDPM model
+
 import copy
 
 import hydra
 import pytorch_lightning as pl
 from datasets.latent import LatentDataset
 from models.callbacks import ImageWriter
-from models.diffusion import DDPM, DDPMWrapper, SuperResModel
+from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel
 from models.vae import VAE
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
@@ -58,17 +60,20 @@ def sample_cond(config):
     decoder.eval()
     ema_decoder.eval()
 
-    online_ddpm = DDPM(
+    ddpm_cls = DDPMv2 if config.evaluation.type == "form2" else DDPM
+    online_ddpm = ddpm_cls(
         decoder,
         beta_1=config_ddpm.model.beta1,
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
+        var_type=config_ddpm.evaluation.variance,
     )
-    target_ddpm = DDPM(
+    target_ddpm = ddpm_cls(
         ema_decoder,
         beta_1=config_ddpm.model.beta1,
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
+        var_type=config_ddpm.evaluation.variance,
     )
 
     # NOTE: Using strict=False since the VAE model is not included
@@ -82,6 +87,8 @@ def sample_cond(config):
         strict=False,
         pred_steps=n_steps,
         eval_mode="sample",
+        data_norm=config.data.norm,
+        temp=config.evaluation.temp,
     )
 
     # Create predict dataset of latents
@@ -125,6 +132,7 @@ def sample_cond(config):
         sample_prefix=config_ddpm.evaluation.sample_prefix,
         save_vae=config_ddpm.evaluation.save_vae,
         save_mode=config_ddpm.evaluation.save_mode,
+        is_norm=config_ddpm.data.norm,
     )
 
     test_kwargs["callbacks"] = [write_callback]

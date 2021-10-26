@@ -1,4 +1,4 @@
-from models.diffusion.unet_openai import checkpoint
+from models.diffusion.ddpm_form2 import DDPMv2
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
@@ -20,6 +20,8 @@ class DDPMWrapper(pl.LightningModule):
         eval_mode="sample",
         pred_steps=None,
         pred_checkpoints=[],
+        data_norm=True,
+        temp=1.0,
     ):
         super().__init__()
         assert loss in ["l1", "l2"]
@@ -30,13 +32,18 @@ class DDPMWrapper(pl.LightningModule):
         self.target_network = target_network
         self.vae = vae
 
+        # Training arguments
         self.criterion = nn.MSELoss(reduction="mean") if loss == "l2" else nn.L1Loss()
         self.lr = lr
         self.grad_clip_val = grad_clip_val
         self.n_anneal_steps = n_anneal_steps
+
+        # Evaluation arguments
         self.eval_mode = eval_mode
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
         self.pred_checkpoints = pred_checkpoints
+        self.data_norm = data_norm
+        self.temp = temp
 
         # Disable automatic optimization
         self.automatic_optimization = False
@@ -98,11 +105,19 @@ class DDPMWrapper(pl.LightningModule):
         if self.eval_mode == "sample":
             x_t, z = batch
             recons = self.vae(z)
-            # This will be broadcasted automatically
-            recons = T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])(recons)
         else:
             (recons, _), x_t = batch
-            x_t = x_t[0]  # This is really a one element tuple
+            x_t = self.temp * x_t[0]  # This is really a one element tuple
+
+        # Normalize
+        if self.data_norm:
+            # Assuming between [0, 1]
+            recons = 2 * recons - 1
+
+        # Formulation-2 initial latent
+        if isinstance(self.online_network, DDPMv2):
+            x_t = recons + self.temp * torch.randn_like(recons)
+
         return (
             self(
                 x_t,

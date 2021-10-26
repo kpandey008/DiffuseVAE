@@ -1,3 +1,5 @@
+# Helper script to sample from an unconditional DDPM model
+
 import copy
 
 import hydra
@@ -20,6 +22,9 @@ def sample(config):
     # Seed and setup
     config = config.dataset.ddpm
     seed_everything(config.evaluation.seed, workers=True)
+
+    # Ensure unconditional DDPM mode
+    assert config.evaluation.type == "uncond"
 
     batch_size = config.evaluation.batch_size
     n_steps = config.evaluation.n_steps
@@ -50,23 +55,22 @@ def sample(config):
         beta_1=config.model.beta1,
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
+        var_type=config.evaluation.variance,
     )
     target_ddpm = DDPM(
         ema_decoder,
         beta_1=config.model.beta1,
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
+        var_type=config.evaluation.variance,
     )
 
-    # NOTE: Using strict=False since the VAE model is not included
-    # in the pretrained DDPM state_dict
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         config.evaluation.chkpt_path,
         online_network=online_ddpm,
         target_network=target_ddpm,
         conditional=False,
         pred_steps=n_steps,
-        eval_mode="sample",
     )
 
     # Create predict dataset of latents
