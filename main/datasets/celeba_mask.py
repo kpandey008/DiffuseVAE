@@ -39,8 +39,10 @@ class CelebAMaskHQDataset(Dataset):
 
         if self.norm:
             img = (np.asarray(img).astype(np.float) / 127.5) - 1.0
+        else:
+            img = np.asarray(img).astype(np.float) / 255.0
 
-        return torch.from_numpy(img)
+        return torch.from_numpy(img).permute(2, 0, 1).float()
 
     def __len__(self):
         return len(self.images)
@@ -48,5 +50,5 @@ class CelebAMaskHQDataset(Dataset):
 
 if __name__ == "__main__":
     root = "/data/kushagrap20/datasets/CelebAMask-HQ"
-    dataset = CelebAMaskHQDataset(root, subsample_size=10000)
+    dataset = CelebAMaskHQDataset(root, subsample_size=None)
     print(len(dataset))

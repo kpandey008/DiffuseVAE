@@ -69,3 +69,4 @@ vae:
     results_dir: ???
     workers: 2
     chkpt_prefix: ""
+    alpha: 1.0

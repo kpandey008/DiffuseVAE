@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def train(config):
     # Get config and setup
     config = config.dataset.vae
-    print(OmegaConf.to_yaml(config))
+    logger.info(OmegaConf.to_yaml(config))
 
     # Set seed
     seed_everything(config.training.seed, workers=True)
@@ -30,21 +30,20 @@ def train(config):
     root = config.data.root
     d_type = config.data.name
     image_size = config.data.image_size
-    dataset = get_dataset(d_type, root, image_size, flip=config.data.hflip)
+    dataset = get_dataset(d_type, root, image_size, norm=False, flip=config.data.hflip)
     N = len(dataset)
     batch_size = config.training.batch_size
     batch_size = min(N, batch_size)
 
     # Model
-    lr = config.training.lr
     vae = VAE(
         input_res=image_size,
         enc_block_str=config.model.enc_block_config,
         dec_block_str=config.model.dec_block_config,
         enc_channel_str=config.model.enc_channel_config,
         dec_channel_str=config.model.dec_channel_config,
-        lr=lr,
-        alpha=1.0,
+        lr=config.training.lr,
+        alpha=config.training.alpha,
     )
 
     # Trainer
