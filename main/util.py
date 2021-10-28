@@ -133,15 +133,26 @@ def convert_to_np(obj):
     return obj_list
 
 
+def normalize(obj):
+    B, C, H, W = obj.shape
+    for i in range(3):
+        channel_val = obj[:, i, :, :].view(B, -1)
+        channel_val -= channel_val.min(1, keepdim=True)[0]
+        channel_val /= (
+            channel_val.max(1, keepdim=True)[0] - channel_val.min(1, keepdim=True)[0]
+        )
+        channel_val = channel_val.view(B, H, W)
+        obj[:, i, :, :] = channel_val
+    return obj
+
+
 def save_as_images(obj, file_name="output", denorm=True):
     # Saves predictions as png images (useful for Sample generation)
+    obj = normalize(obj)
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
-        if denorm:
-            out = ((out + 1) * 127.5).clip(0, 255).astype(np.uint8)
-        else:
-            out = (out * 255).clip(0, 255).astype(np.uint8)
+        out = (out * 255).clip(0, 255).astype(np.uint8)
         img_out = Image.fromarray(out)
         current_file_name = file_name + "_%d.png" % i
         logger.info("Saving image to {}".format(current_file_name))
