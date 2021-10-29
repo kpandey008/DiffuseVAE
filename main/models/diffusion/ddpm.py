@@ -192,15 +192,10 @@ class DDPM(nn.Module):
         return x_start * sqrt_alphas_ + eps * minus_sqrt_alphas_
 
     def forward(self, x, eps, t, low_res=None):
-        # Sample alpha_bar for this t
-        sqrt_alphas = torch.cat(
-            [
-                torch.distributions.uniform.Uniform(
-                    low=self.sqrt_alpha_bar[t_id], high=self.sqrt_alpha_bar_shifted[t_id]
-                ).sample(sample_shape=(1,))
-                for t_id in t
-            ],
-        )
+        # Sample continuous noise
+        sqrt_alphas = torch.distributions.uniform.Uniform(
+            low=self.sqrt_alpha_bar[t], high=self.sqrt_alpha_bar_shifted[t]
+        ).sample(sample_shape=(1,))[0]
 
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, sqrt_alphas).float()
