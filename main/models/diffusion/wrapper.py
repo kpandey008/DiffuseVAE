@@ -105,6 +105,9 @@ class DDPMWrapper(pl.LightningModule):
         if self.eval_mode == "sample":
             x_t, z = batch
             recons = self.vae(z)
+
+            # Initial temperature scaling
+            x_t = x_t * self.temp
         else:
             (recons, _), x_t = batch
             x_t = self.temp * x_t[0]  # This is really a one element tuple
