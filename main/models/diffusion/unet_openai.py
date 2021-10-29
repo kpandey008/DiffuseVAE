@@ -525,7 +525,7 @@ class UNetModel(nn.Module):
         """
         return next(self.input_blocks.parameters()).dtype
 
-    def forward(self, x, timesteps, y=None):
+    def forward(self, x, timesteps, y=None, **kwargs):
         """
         Apply the model to an input batch.
         :param x: an [N x C x ...] Tensor of inputs.
