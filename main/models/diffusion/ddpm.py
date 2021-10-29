@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models.diffusion.unet import Unet
+from models.diffusion.unet_openai import UNetModel
 
 
 def extract(a, t, x_shape):
@@ -34,26 +34,32 @@ class DDPM(nn.Module):
         )
         dev = self.betas.device
         alphas = 1.0 - self.betas
-        alpha_bar = torch.cumprod(alphas, dim=0)
-        alpha_bar_shifted = torch.cat([torch.tensor([1.0], device=dev), alpha_bar[:-1]])
+        self.register_buffer("alpha_bar", torch.cumprod(alphas, dim=0))
+        self.register_buffer(
+            "alpha_bar_shifted",
+            torch.cat([torch.tensor([1.0], device=dev), self.alpha_bar[:-1]]),
+        )
 
-        assert alpha_bar_shifted.shape == torch.Size(
+        assert self.alpha_bar_shifted.shape == torch.Size(
             [
                 self.T,
             ]
         )
 
         # Auxillary consts
-        self.register_buffer("sqrt_alpha_bar", torch.sqrt(alpha_bar))
-        self.register_buffer("minus_sqrt_alpha_bar", torch.sqrt(1.0 - alpha_bar))
-        self.register_buffer("sqrt_recip_alphas_cumprod", torch.sqrt(1.0 / alpha_bar))
+        self.register_buffer("sqrt_alpha_bar", torch.sqrt(self.alpha_bar))
+        self.register_buffer("minus_sqrt_alpha_bar", torch.sqrt(1.0 - self.alpha_bar))
         self.register_buffer(
-            "sqrt_recipm1_alphas_cumprod", torch.sqrt(1.0 / alpha_bar - 1)
+            "sqrt_recip_alphas_cumprod", torch.sqrt(1.0 / self.alpha_bar)
+        )
+        self.register_buffer(
+            "sqrt_recipm1_alphas_cumprod", torch.sqrt(1.0 / self.alpha_bar - 1)
         )
 
         # Posterior q(x_t-1|x_t,x_0,t) covariance of the forward process
         self.register_buffer(
-            "post_variance", self.betas * (1.0 - alpha_bar_shifted) / (1.0 - alpha_bar)
+            "post_variance",
+            self.betas * (1.0 - self.alpha_bar_shifted) / (1.0 - self.alpha_bar),
         )
         # Clipping because post_variance is 0 before the chain starts
         self.register_buffer(
@@ -71,11 +77,11 @@ class DDPM(nn.Module):
         # q(x_t-1 | x_t, x_0) mean coefficients
         self.register_buffer(
             "post_coeff_1",
-            self.betas * torch.sqrt(alpha_bar_shifted) / (1.0 - alpha_bar),
+            self.betas * torch.sqrt(self.alpha_bar_shifted) / (1.0 - self.alpha_bar),
         )
         self.register_buffer(
             "post_coeff_2",
-            torch.sqrt(alphas) * (1 - alpha_bar_shifted) / (1 - alpha_bar),
+            torch.sqrt(alphas) * (1 - self.alpha_bar_shifted) / (1 - self.alpha_bar),
         )
 
     def _predict_xstart_from_eps(self, x_t, t, eps):
@@ -174,21 +180,40 @@ class DDPM(nn.Module):
                 sample_dict[str(idx + 1)] = x
         return sample_dict
 
-    def compute_noisy_input(self, x_start, eps, t):
+    def compute_noisy_input(self, x_start, eps, sqrt_alphas):
         assert eps.shape == x_start.shape
         # Samples the noisy input x_t ~ q(x_t|x_0) in the forward process
-        return x_start * extract(self.sqrt_alpha_bar, t, x_start.shape) + eps * extract(
-            self.minus_sqrt_alpha_bar, t, x_start.shape
-        )
+        B, *_ = sqrt_alphas.shape
+        sqrt_alphas_ = sqrt_alphas.reshape(B, *((1,) * (len(x_start.shape) - 1)))
+        minus_sqrt_alphas_ = torch.sqrt(1 - torch.pow(sqrt_alphas_, 2))
+        return x_start * sqrt_alphas_ + eps * minus_sqrt_alphas_
 
     def forward(self, x, eps, t, low_res=None):
+        # Sample alpha_bar for this t
+        sqrt_alphas = torch.cat(
+            [
+                torch.distributions.uniform.Uniform(
+                    low=self.alpha_bar[t_id], high=self.alpha_bar_shifted[t_id]
+                ).sample(sample_shape=(1,))
+                for t_id in t
+            ],
+        )
+
         # Predict noise
-        x_t = self.compute_noisy_input(x, eps, t)
-        return self.decoder(x_t, t, low_res=low_res)
+        x_t = self.compute_noisy_input(x, eps, sqrt_alphas).float()
+        return self.decoder(x_t, sqrt_alphas, low_res=low_res)
 
 
 if __name__ == "__main__":
-    decoder = Unet(64)
+    decoder = UNetModel(
+        3,
+        64,
+        3,
+        2,
+        [
+            16,
+        ],
+    )
     ddpm = DDPM(decoder)
     t = torch.randint(0, 1000, size=(4,))
     sample = torch.randn(4, 3, 128, 128)
