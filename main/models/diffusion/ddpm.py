@@ -48,6 +48,9 @@ class DDPM(nn.Module):
 
         # Auxillary consts
         self.register_buffer("sqrt_alpha_bar", torch.sqrt(self.alpha_bar))
+        self.register_buffer(
+            "sqrt_alpha_bar_shifted", torch.sqrt(self.alpha_bar_shifted)
+        )
         self.register_buffer("minus_sqrt_alpha_bar", torch.sqrt(1.0 - self.alpha_bar))
         self.register_buffer(
             "sqrt_recip_alphas_cumprod", torch.sqrt(1.0 / self.alpha_bar)
@@ -193,7 +196,7 @@ class DDPM(nn.Module):
         sqrt_alphas = torch.cat(
             [
                 torch.distributions.uniform.Uniform(
-                    low=self.alpha_bar[t_id], high=self.alpha_bar_shifted[t_id]
+                    low=self.sqrt_alpha_bar[t_id], high=self.sqrt_alpha_bar_shifted[t_id]
                 ).sample(sample_shape=(1,))
                 for t_id in t
             ],
