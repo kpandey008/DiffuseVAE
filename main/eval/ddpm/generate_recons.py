@@ -74,6 +74,7 @@ def generate_recons(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
+        persistent_buffers=config_ddpm.evaluation.persistent_buffers,
     )
     target_ddpm = ddpm_cls(
         ema_decoder,
@@ -81,6 +82,7 @@ def generate_recons(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
+        persistent_buffers=config_ddpm.evaluation.persistent_buffers,
     )
 
     # NOTE: Using strict=False since the VAE model is not included

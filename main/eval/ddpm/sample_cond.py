@@ -77,6 +77,7 @@ def sample_cond(config):
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
         ddpm_latents=ddpm_latents,
+        persistent_buffers=config_ddpm.evaluation.persistent_buffers,
     )
     target_ddpm = ddpm_cls(
         ema_decoder,
@@ -85,6 +86,7 @@ def sample_cond(config):
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
         ddpm_latents=ddpm_latents,
+        persistent_buffers=config_ddpm.evaluation.persistent_buffers,
     )
 
     # NOTE: Using strict=False since the VAE model is not included

@@ -62,6 +62,7 @@ def sample(config):
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
         var_type=config.evaluation.variance,
+        persistent_buffers=config.evaluation.persistent_buffers,
     )
     target_ddpm = DDPM(
         ema_decoder,
@@ -69,6 +70,7 @@ def sample(config):
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
         var_type=config.evaluation.variance,
+        persistent_buffers=config.evaluation.persistent_buffers,
     )
 
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(

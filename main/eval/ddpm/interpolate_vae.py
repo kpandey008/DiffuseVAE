@@ -73,6 +73,7 @@ def interpolate_vae(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
+        persistent_buffers=config_ddpm.evaluation.persistent_buffers,
     )
     target_ddpm = ddpm_cls(
         ema_decoder,
@@ -80,6 +81,7 @@ def interpolate_vae(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
+        persistent_buffers=config_ddpm.evaluation.persistent_buffers,
     )
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         config_ddpm.evaluation.chkpt_path,

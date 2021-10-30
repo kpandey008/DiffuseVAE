@@ -19,6 +19,7 @@ class DDPM(nn.Module):
         T=1000,
         var_type="fixedlarge",
         ddpm_latents=None,
+        persistent_buffers=True,
     ):
         super().__init__()
         self.decoder = decoder
@@ -27,17 +28,25 @@ class DDPM(nn.Module):
         self.beta_2 = beta_2
         self.var_type = var_type
         self.ddpm_latents = ddpm_latents
+        self.persistent_buffers = persistent_buffers
 
         # Main constants
         self.register_buffer(
-            "betas", torch.linspace(self.beta_1, self.beta_2, steps=self.T).double()
+            "betas",
+            torch.linspace(self.beta_1, self.beta_2, steps=self.T).double(),
+            persistent=self.persistent_buffers,
         )
         dev = self.betas.device
         alphas = 1.0 - self.betas
-        self.register_buffer("alpha_bar", torch.cumprod(alphas, dim=0))
+        self.register_buffer(
+            "alpha_bar",
+            torch.cumprod(alphas, dim=0),
+            persistent=self.persistent_buffers,
+        )
         self.register_buffer(
             "alpha_bar_shifted",
             torch.cat([torch.tensor([1.0], device=dev), self.alpha_bar[:-1]]),
+            persistent=self.persistent_buffers,
         )
 
         assert self.alpha_bar_shifted.shape == torch.Size(
@@ -47,22 +56,37 @@ class DDPM(nn.Module):
         )
 
         # Auxillary consts
-        self.register_buffer("sqrt_alpha_bar", torch.sqrt(self.alpha_bar))
         self.register_buffer(
-            "sqrt_alpha_bar_shifted", torch.sqrt(self.alpha_bar_shifted)
-        )
-        self.register_buffer("minus_sqrt_alpha_bar", torch.sqrt(1.0 - self.alpha_bar))
-        self.register_buffer(
-            "sqrt_recip_alphas_cumprod", torch.sqrt(1.0 / self.alpha_bar)
+            "sqrt_alpha_bar",
+            torch.sqrt(self.alpha_bar),
+            persistent=self.persistent_buffers,
         )
         self.register_buffer(
-            "sqrt_recipm1_alphas_cumprod", torch.sqrt(1.0 / self.alpha_bar - 1)
+            "sqrt_alpha_bar_shifted",
+            torch.sqrt(self.alpha_bar_shifted),
+            persistent=self.persistent_buffers,
+        )
+        self.register_buffer(
+            "minus_sqrt_alpha_bar",
+            torch.sqrt(1.0 - self.alpha_bar),
+            persistent=self.persistent_buffers,
+        )
+        self.register_buffer(
+            "sqrt_recip_alphas_cumprod",
+            torch.sqrt(1.0 / self.alpha_bar),
+            persistent=self.persistent_buffers,
+        )
+        self.register_buffer(
+            "sqrt_recipm1_alphas_cumprod",
+            torch.sqrt(1.0 / self.alpha_bar - 1),
+            persistent=self.persistent_buffers,
         )
 
         # Posterior q(x_t-1|x_t,x_0,t) covariance of the forward process
         self.register_buffer(
             "post_variance",
             self.betas * (1.0 - self.alpha_bar_shifted) / (1.0 - self.alpha_bar),
+            persistent=self.persistent_buffers,
         )
         # Clipping because post_variance is 0 before the chain starts
         self.register_buffer(
@@ -75,16 +99,19 @@ class DDPM(nn.Module):
                     ]
                 )
             ),
+            persistent=self.persistent_buffers,
         )
 
         # q(x_t-1 | x_t, x_0) mean coefficients
         self.register_buffer(
             "post_coeff_1",
             self.betas * torch.sqrt(self.alpha_bar_shifted) / (1.0 - self.alpha_bar),
+            persistent=self.persistent_buffers,
         )
         self.register_buffer(
             "post_coeff_2",
             torch.sqrt(alphas) * (1 - self.alpha_bar_shifted) / (1 - self.alpha_bar),
+            persistent=self.persistent_buffers,
         )
 
     def _predict_xstart_from_eps(self, x_t, t, eps):
@@ -97,6 +124,15 @@ class DDPM(nn.Module):
     def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True, cond=None):
         B = x_t.size(0)
         t_ = torch.full((x_t.size(0),), t, device=x_t.device, dtype=torch.long)
+        sqrt_alpha_bar_ = torch.full(
+            (x_t.size(0),), self.sqrt_alpha_bar[t], device=x_t.device, dtype=torch.float
+        )
+        assert sqrt_alpha_bar_.shape == torch.Size(
+            [
+                B,
+            ]
+        )
+
         assert t_.shape == torch.Size(
             [
                 B,
@@ -105,7 +141,7 @@ class DDPM(nn.Module):
 
         # Generate the reconstruction from x_t
         x_recons = self._predict_xstart_from_eps(
-            x_t, t_, self.decoder(x_t, t_, low_res=cond)
+            x_t, t_, self.decoder(x_t, sqrt_alpha_bar_, low_res=cond)
         )
 
         # Clip

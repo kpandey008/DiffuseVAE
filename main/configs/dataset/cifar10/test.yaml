@@ -35,6 +35,7 @@ ddpm:
     sample_prefix: ""
     temp: 1.0
     save_mode: image
+    persistent_buffers: True
   
   interpolation:
     n_steps: 10
