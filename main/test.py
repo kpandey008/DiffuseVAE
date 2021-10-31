@@ -171,10 +171,11 @@ def sample_combined(
 @click.argument("chkpt-path")
 @click.argument("root")
 @click.option("--device", default="gpu:1")
-@click.option("--dataset", default="celeba-hq")
+@click.option("--dataset", default="celebamaskhq")
 @click.option("--image-size", default=128)
 @click.option("--num-samples", default=-1)
 @click.option("--save-path", default=os.getcwd())
+@click.option("--write-mode", default="image", type=click.Choice(["numpy", "image"]))
 def reconstruct(
     chkpt_path,
     root,
@@ -183,23 +184,14 @@ def reconstruct(
     image_size=128,
     num_samples=-1,
     save_path=os.getcwd(),
+    write_mode="image",
 ):
-    dev = configure_device(device)
+    dev, _ = configure_device(device)
     if num_samples == 0:
         raise ValueError(f"`--num-samples` can take value=-1 or > 0")
 
-    # Transforms
-    assert image_size in [128, 256, 512]
-    transforms = T.Compose(
-        [
-            T.Resize(image_size),
-            T.CenterCrop(image_size),
-            T.ToTensor(),
-        ]
-    )
-
     # Dataset
-    dataset = get_dataset(dataset, root, transform=transforms)
+    dataset = get_dataset(dataset, root, image_size, norm=False, flip=False)
 
     # Loader
     loader = DataLoader(
@@ -210,7 +202,7 @@ def reconstruct(
         shuffle=False,
         drop_last=False,
     )
-    vae = VAE.load_from_checkpoint(chkpt_path).to(dev)
+    vae = VAE.load_from_checkpoint(chkpt_path, input_res=image_size).to(dev)
     vae.eval()
 
     sample_list = []
@@ -222,8 +214,8 @@ def reconstruct(
             recons = vae.forward_recons(batch)
 
         if count + recons.size(0) >= num_samples and num_samples != -1:
-            img_list.append(batch[:num_samples, :, :, :])
-            sample_list.append(recons[:num_samples, :, :, :])
+            img_list.append(batch[:num_samples, :, :, :].cpu())
+            sample_list.append(recons[:num_samples, :, :, :].cpu())
             break
 
         # Not transferring to CPU leads to memory overflow in GPU!
@@ -231,13 +223,26 @@ def reconstruct(
         img_list.append(batch.cpu())
         count += recons.size(0)
 
-    cat_img = torch.cat(img_list, dim=0).numpy()
-    cat_sample = torch.cat(sample_list, dim=0).numpy()
+    cat_img = torch.cat(img_list, dim=0)
+    cat_sample = torch.cat(sample_list, dim=0)
 
     # Save the image and reconstructions as numpy arrays
     os.makedirs(save_path, exist_ok=True)
-    np.save(os.path.join(save_path, "images.npy"), cat_img)
-    np.save(os.path.join(save_path, "recons.npy"), cat_sample)
+
+    if write_mode == "image":
+        save_as_images(
+            cat_sample,
+            file_name=os.path.join(save_path, "orig"),
+            denorm=False,
+        )
+        save_as_images(
+            cat_img,
+            file_name=os.path.join(save_path, "vae"),
+            denorm=False,
+        )
+    else:
+        np.save(os.path.join(save_path, "images.npy"), cat_img.numpy())
+        np.save(os.path.join(save_path, "recons.npy"), cat_sample.numpy())
 
 
 if __name__ == "__main__":
