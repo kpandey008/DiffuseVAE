@@ -50,12 +50,12 @@ class DDPMv2(nn.Module):
         # Auxillary consts
         self.register_buffer(
             "sqrt_alpha_bar",
-            torch.sqrt(self.alpha_bar),
+            torch.sqrt(alpha_bar),
             persistent=self.persistent_buffers,
         )
         self.register_buffer(
             "sqrt_alpha_bar_shifted",
-            torch.sqrt(self.alpha_bar_shifted),
+            torch.sqrt(alpha_bar_shifted),
             persistent=self.persistent_buffers,
         )
         self.register_buffer(
