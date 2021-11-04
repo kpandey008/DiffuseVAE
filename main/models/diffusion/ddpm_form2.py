@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models.diffusion.unet import Unet
+from models.diffusion.unet_openai import UNetModel
 
 
 def extract(a, t, x_shape):
@@ -19,6 +19,7 @@ class DDPMv2(nn.Module):
         T=1000,
         var_type="fixedlarge",
         ddpm_latents=None,
+        persistent_buffers=True,
     ):
         super().__init__()
         self.decoder = decoder
@@ -27,10 +28,13 @@ class DDPMv2(nn.Module):
         self.beta_2 = beta_2
         self.var_type = var_type
         self.ddpm_latents = ddpm_latents
+        self.persistent_buffers = persistent_buffers
 
         # Main constants
         self.register_buffer(
-            "betas", torch.linspace(self.beta_1, self.beta_2, steps=self.T).double()
+            "betas",
+            torch.linspace(self.beta_1, self.beta_2, steps=self.T).double(),
+            persistent=self.persistent_buffers,
         )
         dev = self.betas.device
         alphas = 1.0 - self.betas
@@ -44,16 +48,37 @@ class DDPMv2(nn.Module):
         )
 
         # Auxillary consts
-        self.register_buffer("sqrt_alpha_bar", torch.sqrt(alpha_bar))
-        self.register_buffer("minus_sqrt_alpha_bar", torch.sqrt(1.0 - alpha_bar))
-        self.register_buffer("sqrt_recip_alphas_cumprod", torch.sqrt(1.0 / alpha_bar))
         self.register_buffer(
-            "sqrt_recipm1_alphas_cumprod", torch.sqrt(1.0 / alpha_bar - 1)
+            "sqrt_alpha_bar",
+            torch.sqrt(self.alpha_bar),
+            persistent=self.persistent_buffers,
+        )
+        self.register_buffer(
+            "sqrt_alpha_bar_shifted",
+            torch.sqrt(self.alpha_bar_shifted),
+            persistent=self.persistent_buffers,
+        )
+        self.register_buffer(
+            "minus_sqrt_alpha_bar",
+            torch.sqrt(1.0 - alpha_bar),
+            persistent=self.persistent_buffers,
+        )
+        self.register_buffer(
+            "sqrt_recip_alphas_cumprod",
+            torch.sqrt(1.0 / alpha_bar),
+            persistent=self.persistent_buffers,
+        )
+        self.register_buffer(
+            "sqrt_recipm1_alphas_cumprod",
+            torch.sqrt(1.0 / alpha_bar - 1),
+            persistent=self.persistent_buffers,
         )
 
         # Posterior q(x_t-1|x_t,x_0,t) covariance of the forward process
         self.register_buffer(
-            "post_variance", self.betas * (1.0 - alpha_bar_shifted) / (1.0 - alpha_bar)
+            "post_variance",
+            self.betas * (1.0 - alpha_bar_shifted) / (1.0 - alpha_bar),
+            persistent=self.persistent_buffers,
         )
         # Clipping because post_variance is 0 before the chain starts
         self.register_buffer(
@@ -66,20 +91,24 @@ class DDPMv2(nn.Module):
                     ]
                 )
             ),
+            persistent=self.persistent_buffers,
         )
 
         # q(x_t-1 | x_t, x_0) mean coefficients
         self.register_buffer(
             "post_coeff_1",
             self.betas * torch.sqrt(alpha_bar_shifted) / (1.0 - alpha_bar),
+            persistent=self.persistent_buffers,
         )
         self.register_buffer(
             "post_coeff_2",
             torch.sqrt(alphas) * (1 - alpha_bar_shifted) / (1 - alpha_bar),
+            persistent=self.persistent_buffers,
         )
         self.register_buffer(
             "post_coeff_3",
             1 - self.post_coeff_2,
+            persistent=self.persistent_buffers,
         )
 
     def _predict_xstart_from_eps(self, x_t, t, eps, cond=None):
@@ -95,6 +124,15 @@ class DDPMv2(nn.Module):
     def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True, cond=None):
         B = x_t.size(0)
         t_ = torch.full((x_t.size(0),), t, device=x_t.device, dtype=torch.long)
+        sqrt_alpha_bar_ = torch.full(
+            (x_t.size(0),), self.sqrt_alpha_bar[t], device=x_t.device, dtype=torch.float
+        )
+        assert sqrt_alpha_bar_.shape == torch.Size(
+            [
+                B,
+            ]
+        )
+
         assert t_.shape == torch.Size(
             [
                 B,
@@ -104,7 +142,7 @@ class DDPMv2(nn.Module):
 
         # Generate the reconstruction from x_t
         x_recons = self._predict_xstart_from_eps(
-            x_t, t_, self.decoder(x_t, t_, low_res=cond), cond=cond
+            x_t, t_, self.decoder(x_t, sqrt_alpha_bar_, low_res=cond), cond=cond
         )
 
         # Clip
@@ -187,24 +225,36 @@ class DDPMv2(nn.Module):
                 sample_dict[str(idx + 1)] = x
         return sample_dict
 
-    def compute_noisy_input(self, x_start, eps, t, low_res=None):
+    def compute_noisy_input(self, x_start, eps, sqrt_alphas, low_res=None):
         assert eps.shape == x_start.shape
         x_hat = 0 if low_res is None else low_res
         # Samples the noisy input x_t ~ N(x_t|x_0) in the forward process
-        return (
-            x_start * extract(self.sqrt_alpha_bar, t, x_start.shape)
-            + x_hat
-            + eps * extract(self.minus_sqrt_alpha_bar, t, x_start.shape)
-        )
+        B, *_ = sqrt_alphas.shape
+        sqrt_alphas_ = sqrt_alphas.reshape(B, *((1,) * (len(x_start.shape) - 1)))
+        minus_sqrt_alphas_ = torch.sqrt(1 - torch.pow(sqrt_alphas_, 2))
+        return x_start * sqrt_alphas_ + x_hat + eps * minus_sqrt_alphas_
 
     def forward(self, x, eps, t, low_res=None):
+        # Sample continuous noise
+        sqrt_alphas = torch.distributions.uniform.Uniform(
+            low=self.sqrt_alpha_bar[t], high=self.sqrt_alpha_bar_shifted[t]
+        ).sample(sample_shape=(1,))[0]
+
         # Predict noise
-        x_t = self.compute_noisy_input(x, eps, t, low_res=low_res)
-        return self.decoder(x_t, t, low_res=low_res)
+        x_t = self.compute_noisy_input(x, eps, sqrt_alphas, low_res=low_res)
+        return self.decoder(x_t, sqrt_alphas, low_res=low_res)
 
 
 if __name__ == "__main__":
-    decoder = Unet(64)
+    decoder = UNetModel(
+        3,
+        64,
+        3,
+        2,
+        [
+            16,
+        ],
+    )
     ddpm = DDPMv2(decoder)
     t = torch.randint(0, 1000, size=(4,))
     sample = torch.randn(4, 3, 128, 128)
