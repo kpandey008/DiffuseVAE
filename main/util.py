@@ -58,24 +58,18 @@ def get_resnet_models(backbone_name, pretrained=False, **kwargs):
 
 def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
     assert isinstance(norm, bool)
+    transform = T.Compose(
+        [
+            T.Resize(image_size),
+            T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
+        ]
+    )
     if name == "celeba":
-        transform = T.Compose(
-            [
-                T.Resize(image_size),
-                T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
-            ]
-        )
         dataset = CelebADataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "celebamaskhq":
-        transform = T.Compose(
-            [
-                T.Resize(image_size),
-                T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
-            ]
-        )
         dataset = CelebAMaskHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
-        dataset = ReconstructionDataset(root, norm=norm, **kwargs)
+        dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "cifar10":
         assert image_size == 32
         transform = T.Compose(
@@ -161,11 +155,10 @@ def save_as_images(obj, file_name="output", denorm=True):
 
 def save_as_np(obj, file_name="output", denorm=True):
     # Saves predictions as numpy arrays between -1 and 1 (useful for FID computation)
+    obj = normalize(obj)
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
-        if denorm:
-            out = (out + 1) / 2
         current_file_name = file_name + "_%d.npy" % i
         logger.info("Saving image to {}".format(current_file_name))
         np.save(current_file_name, out)

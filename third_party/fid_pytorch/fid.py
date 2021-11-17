@@ -43,7 +43,7 @@ except ImportError:
         return x
 
 
-from pytorch_fid.inception import InceptionV3
+from inception import InceptionV3
 
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument("--batch-size", type=int, default=50, help="Batch size to use")
@@ -126,12 +126,12 @@ class NpPathDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, i):
         path = self.files[i]
-        img = np.load(path).transpose(2, 0, 1)
+        img = np.load(path, allow_pickle=True).transpose(2, 0, 1)
         if self.transforms is not None:
             img = self.transforms(img)
 
-        # Asuuming numpy arrays between [-1, 1]
-        return torch.tensor(img) * 0.5 + 0.5
+        # Assuming numpy arrays between [0, 1]
+        return torch.tensor(img)
 
 
 def get_activations(

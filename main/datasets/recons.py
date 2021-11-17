@@ -6,11 +6,12 @@ from torch.utils.data import Dataset
 
 
 class ReconstructionDataset(Dataset):
-    def __init__(self, root, subsample_size=None, norm=False, **kwargs):
+    def __init__(self, root, subsample_size=None, norm=False, transform=None, **kwargs):
         if not os.path.isdir(root):
             raise ValueError(f"The specified root: {root} does not exist")
         self.root = root
         self.norm = norm
+        self.transform = transform
 
         self.images = np.load(os.path.join(self.root, "images.npy"))
         self.recons = np.load(os.path.join(self.root, "recons.npy"))
@@ -25,6 +26,10 @@ class ReconstructionDataset(Dataset):
     def __getitem__(self, idx):
         img = torch.from_numpy(self.images[idx])
         recons = torch.from_numpy(self.recons[idx])
+
+        if self.transform is not None:
+            img = self.transform(img)
+            recons = self.transform(recons)
 
         # Normalize between (-1, 1) (Assuming between [0, 1])
         if self.norm:

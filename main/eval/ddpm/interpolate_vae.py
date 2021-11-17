@@ -2,7 +2,7 @@
 import os
 import sys
 
-p = os.path.abspath(".")
+p = os.path.join(os.path.abspath("."), 'main')
 sys.path.insert(1, p)
 
 import copy

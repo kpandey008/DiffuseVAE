@@ -1,23 +1,12 @@
-python train_ddpm.py --dim 128 \
-                    --attn-resolutions "16," \
-                    --n-residual 2 \
-                    --dim-mults "1,1,2,2,4,4" \
-                    --dropout 0 \
-                    --n-heads 1 \
-                    --beta1 1e-4 \
-                    --beta2 0.02 \
-                    --n-timesteps 1000 \
-                    --fp16 True \
-                    --use-ema True \
-                    --ema-decay 0.9999 \
-                    --batch-size 8 \
-                    --epochs 2000 \
-                    --device gpu:0,1 \
-                    --lr 2e-5 \
-                    --flip False \
-                    --results-dir /data/kushagrap20/ddpm_128 \
-                    --image-size 128 \
-                    --workers 8 \
-                    --seed 0 \
-                    --dataset 'celeba-hq' \
-                    /data/kushagrap20/datasets/CelebAMask-HQ
+# CelebAMaskHQ training
+python train_ddpm.py +dataset=celebamaskhq128/train \
+                     dataset.ddpm.data.root='/data/kushagrap20/vaedm/reconstructions_celebahq' \
+                     dataset.ddpm.data.name='recons' \
+                     dataset.ddpm.data.norm='False' \
+                     dataset.ddpm.training.type='form2' \
+                     dataset.ddpm.training.batch_size=10 \
+                     dataset.ddpm.training.device=\'gpu:0,1,2,3\' \
+                     dataset.ddpm.training.results_dir=\'/data/kushagrap20/ddpm_celebamaskhq_26thOct_form2_scale[01]\' \
+                     dataset.ddpm.training.restore_path=\'/data/kushagrap20/ddpm_celebamaskhq_26thOct_form2_scale[01]/checkpoints/ddpmv2-celebamaskhq_26thOct_form2_scale01-epoch=07-loss=0.0017.ckpt\' \
+                     dataset.ddpm.training.workers=2 \
+                     dataset.ddpm.training.chkpt_prefix='celebamaskhq_26thOct_form2_scale01'
