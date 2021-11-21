@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import torch
 import torchvision.transforms as T
 
 from PIL import Image
@@ -13,6 +14,7 @@ class CelebADataset(Dataset):
     def __init__(
         self,
         root,
+        norm=True,
         subsample_size=None,
         transform=None,
         **kwargs
@@ -21,6 +23,7 @@ class CelebADataset(Dataset):
             raise ValueError(f"The specified root: {root} does not exist")
         self.root = root
         self.transform = transform
+        self.norm = norm
 
         self.images = []
 
@@ -41,7 +44,12 @@ class CelebADataset(Dataset):
         if self.transform is not None:
             img = self.transform(img)
 
-        return img
+        if self.norm:
+            img = (np.asarray(img).astype(np.float) / 127.5) - 1.0
+        else:
+            img = np.asarray(img).astype(np.float) / 255.0
+
+        return torch.from_numpy(img).permute(2, 0, 1).float()
 
     def __len__(self):
         return len(self.images)

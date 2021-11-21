@@ -1,0 +1,65 @@
+# DDPM config used for DDPM training
+ddpm:
+  data:
+    root: ???
+    name: "celeba"
+    image_size: 64
+    hflip: True
+    n_channels: 3
+    norm: True
+
+  model:
+    dim : 128
+    attn_resolutions: "16,"
+    n_residual: 2
+    dim_mults: "1,2,2,2,4"
+    dropout: 0.1
+    n_heads: 1
+    beta1: 0.0001
+    beta2: 0.02
+    n_timesteps: 1000
+
+  evaluation:
+    chkpt_path: ???
+    save_path: ???
+    type: 'form1'
+    seed: 0
+    device: "gpu:0"
+    n_samples: 50000
+    n_steps: 1000
+    workers: 2
+    batch_size: 8
+    save_vae: False
+    variance: "fixedlarge"
+    sample_prefix: ""
+    temp: 1.0
+    save_mode: image
+  
+  interpolation:
+    n_steps: 10
+
+# VAE config used for VAE training
+vae:
+  data:
+    root: ???
+    name: "celeba"
+    image_size: 64
+    n_channels: 3
+
+  model:
+    z_dim: 512
+    enc_block_config : "64x7,64d2,64t32,32x4,32d2,32t16,16x7,16d2,16t8,8x3,8d2,8t4,4x3,4d4,4t1,1x2"
+    enc_channel_config: "64:64,32:128,16:256,8:256,4:256,1:512"
+    dec_block_config: "1x1,1u4,1t4,4x2,4u2,4t8,8x3,8u2,8t16,16x7,16u2,16t32,32x8,32u2,32t64,64x10"
+    dec_channel_config: "64:64,32:128,16:256,8:256,4:256,1:512"
+
+  evaluation:
+    chkpt_path: ???
+    save_path: ???
+    seed: 0
+    device: "gpu:0"
+    workers: 2
+    batch_size: 8
+    n_samples: 50000
+    sample_prefix: ""
+    save_mode: image

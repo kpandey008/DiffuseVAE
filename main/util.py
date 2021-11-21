@@ -60,7 +60,7 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
     assert isinstance(norm, bool)
     transform = T.Compose(
         [
-            T.Resize(image_size),
+            T.Resize((image_size, image_size)),
             T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
         ]
     )
