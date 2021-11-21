@@ -12,6 +12,7 @@ from datasets import (
     CelebAMaskHQDataset,
     ReconstructionDataset,
     CIFAR10Dataset,
+    ReconstructionDatasetv2
 )
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,8 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         dataset = CelebAMaskHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
         dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
+    elif name == "reconsv2":
+        dataset = ReconstructionDatasetv2(root, norm=norm, transform=transform, **kwargs)
     elif name == "cifar10":
         assert image_size == 32
         transform = T.Compose(
@@ -142,7 +145,8 @@ def normalize(obj):
 
 def save_as_images(obj, file_name="output", denorm=True):
     # Saves predictions as png images (useful for Sample generation)
-    obj = normalize(obj)
+    if denorm:
+        obj = normalize(obj)
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
@@ -154,8 +158,9 @@ def save_as_images(obj, file_name="output", denorm=True):
 
 
 def save_as_np(obj, file_name="output", denorm=True):
-    # Saves predictions as numpy arrays between -1 and 1 (useful for FID computation)
-    obj = normalize(obj)
+    # Saves predictions directly as numpy arrays
+    if denorm:
+        obj = normalize(obj)
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
