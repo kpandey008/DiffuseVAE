@@ -65,8 +65,8 @@ class ReconstructionDatasetv2(Dataset):
 
     def __getitem__(self, idx):
         img_path, recons_path = self.files[idx]
-        img = torch.from_numpy(np.load(img_path))
-        recons = torch.from_numpy(np.load(recons_path))
+        img = torch.from_numpy(np.load(img_path)).permute(2, 0, 1)
+        recons = torch.from_numpy(np.load(recons_path)).permute(2, 0, 1)
 
         if self.transform is not None:
             img = self.transform(img)

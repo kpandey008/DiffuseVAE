@@ -146,7 +146,8 @@ def normalize(obj):
 def save_as_images(obj, file_name="output", denorm=True):
     # Saves predictions as png images (useful for Sample generation)
     if denorm:
-        obj = normalize(obj)
+        # obj = normalize(obj)
+        obj = obj * 0.5 + 0.5
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
