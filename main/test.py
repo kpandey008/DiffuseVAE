@@ -166,7 +166,8 @@ def sample_combined(
             )
 
 
-# TODO: Check how to perform Multi-GPU inference
+# TODO: Upgrade the commands in this script to use hydra config
+# and support Multi-GPU inference
 @cli.command()
 @click.argument("chkpt-path")
 @click.argument("root")
@@ -232,12 +233,12 @@ def reconstruct(
     if write_mode == "image":
         save_as_images(
             cat_sample,
-            file_name=os.path.join(save_path, "orig"),
+            file_name=os.path.join(save_path, "vae"),
             denorm=False,
         )
         save_as_images(
             cat_img,
-            file_name=os.path.join(save_path, "vae"),
+            file_name=os.path.join(save_path, "orig"),
             denorm=False,
         )
     else:
