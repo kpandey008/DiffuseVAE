@@ -10,6 +10,7 @@ import models.backbone.resnet as backbone_models
 from datasets import (
     CelebADataset,
     CelebAMaskHQDataset,
+    AFHQDataset,
     ReconstructionDataset,
     CIFAR10Dataset,
     ReconstructionDatasetv2
@@ -69,6 +70,8 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         dataset = CelebADataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "celebamaskhq":
         dataset = CelebAMaskHQDataset(root, norm=norm, transform=transform, **kwargs)
+    elif name == 'afhq':
+        dataset = AFHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
         dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "reconsv2":
