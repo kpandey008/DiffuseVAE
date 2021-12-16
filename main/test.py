@@ -5,9 +5,11 @@ import os
 import torch
 import torchvision.transforms as T
 
+from pytorch_lightning.utilities.seed import seed_everything
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 
+from datasets.latent import UncondLatentDataset
 from models.vae import VAE
 from models.refiner.unet import UNet
 from util import get_dataset, save_as_images, configure_device
@@ -180,8 +182,8 @@ def sample_combined(
 def reconstruct(
     chkpt_path,
     root,
-    device="gpu:1",
-    dataset="celeba-hq",
+    device="gpu:0",
+    dataset="celebamaskhq",
     image_size=128,
     num_samples=-1,
     save_path=os.getcwd(),
@@ -243,6 +245,74 @@ def reconstruct(
         )
     else:
         np.save(os.path.join(save_path, "images.npy"), cat_img.numpy())
+        np.save(os.path.join(save_path, "recons.npy"), cat_sample.numpy())
+
+
+@cli.command()
+@click.argument("z-dim", type=int)
+@click.argument("chkpt-path")
+@click.option("--seed", default=0, type=int)
+@click.option("--device", default="gpu:1")
+@click.option("--image-size", default=128)
+@click.option("--num-samples", default=-1)
+@click.option("--save-path", default=os.getcwd())
+@click.option("--write-mode", default="image", type=click.Choice(["numpy", "image"]))
+def sample(
+    z_dim,
+    chkpt_path,
+    seed=0,
+    device="gpu:0",
+    image_size=128,
+    num_samples=1,
+    save_path=os.getcwd(),
+    write_mode="image",
+):
+    seed_everything(seed)
+    dev, _ = configure_device(device)
+    if num_samples <= 0:
+        raise ValueError(f"`--num-samples` can take values > 0")
+
+    dataset = UncondLatentDataset((num_samples, z_dim, 1, 1))
+
+    # Loader
+    loader = DataLoader(
+        dataset,
+        16,
+        num_workers=4,
+        pin_memory=True,
+        shuffle=False,
+        drop_last=False,
+    )
+    vae = VAE.load_from_checkpoint(chkpt_path, input_res=image_size).to(dev)
+    vae.eval()
+
+    sample_list = []
+    count = 0
+    for _, batch in tqdm(enumerate(loader)):
+        batch = batch.to(dev)
+        with torch.no_grad():
+            recons = vae.forward(batch)
+
+        if count + recons.size(0) >= num_samples and num_samples != -1:
+            sample_list.append(recons[:num_samples, :, :, :].cpu())
+            break
+
+        # Not transferring to CPU leads to memory overflow in GPU!
+        sample_list.append(recons.cpu())
+        count += recons.size(0)
+
+    cat_sample = torch.cat(sample_list, dim=0)
+
+    # Save the image and reconstructions as numpy arrays
+    os.makedirs(save_path, exist_ok=True)
+
+    if write_mode == "image":
+        save_as_images(
+            cat_sample,
+            file_name=os.path.join(save_path, "vae"),
+            denorm=False,
+        )
+    else:
         np.save(os.path.join(save_path, "recons.npy"), cat_sample.numpy())
 
 

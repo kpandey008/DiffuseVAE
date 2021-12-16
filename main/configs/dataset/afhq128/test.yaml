@@ -42,7 +42,7 @@ ddpm:
 vae:
   data:
     root: ???
-    name: "celebamaskhq"
+    name: "afhq"
     image_size: 128
     n_channels: 3
 
