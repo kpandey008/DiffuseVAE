@@ -106,7 +106,7 @@ def sample_cond(config):
     z_dataset = LatentDataset(
         (n_samples, config_vae.model.z_dim, 1, 1),
         (n_samples, 3, image_size, image_size),
-        n_steps=n_steps,
+        share_ddpm_latent=True if ddpm_latent_path != "" else False,
     )
 
     # Setup devices

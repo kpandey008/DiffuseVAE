@@ -4,12 +4,20 @@ from torch.utils.data import Dataset
 
 
 class LatentDataset(Dataset):
-    def __init__(self, z_vae_size, z_ddpm_size, **kwargs):
+    def __init__(self, z_vae_size, z_ddpm_size, share_ddpm_latent=False, **kwargs):
         # NOTE: The batch index must be included in the latent code size input
+        _, dims = z_ddpm_size
         self.z_vae = torch.randn(z_vae_size)
-        self.z_ddpm = torch.randn(z_ddpm_size)
+        self.share_ddpm_latent = share_ddpm_latent
+
+        if self.share_ddpm_latent:
+            self.z_ddpm = torch.randn(dims)
+        else:
+            self.z_ddpm = torch.randn(z_ddpm_size)
 
     def __getitem__(self, idx):
+        if self.share_ddpm_latent:
+            return self.z_ddpm
         return self.z_ddpm[idx], self.z_vae[idx]
 
     def __len__(self):

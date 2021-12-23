@@ -6,7 +6,8 @@ ddpm:
     image_size: 32
     hflip: True
     n_channels: 3
-    norm: False
+    norm: True
+    ddpm_latent_path: ""
 
   model:
     dim : 128
