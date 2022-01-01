@@ -13,7 +13,7 @@ from datasets import (
     AFHQDataset,
     ReconstructionDataset,
     CIFAR10Dataset,
-    ReconstructionDatasetv2
+    ReconstructionDatasetv2,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,12 +70,14 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         dataset = CelebADataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "celebamaskhq":
         dataset = CelebAMaskHQDataset(root, norm=norm, transform=transform, **kwargs)
-    elif name == 'afhq':
+    elif name == "afhq":
         dataset = AFHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
         dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "reconsv2":
-        dataset = ReconstructionDatasetv2(root, norm=norm, transform=transform, **kwargs)
+        dataset = ReconstructionDatasetv2(
+            root, norm=norm, transform=transform, **kwargs
+        )
     elif name == "cifar10":
         assert image_size == 32
         transform = T.Compose(
@@ -147,7 +149,7 @@ def normalize(obj):
 
 
 def save_as_images(obj, file_name="output", denorm=True):
-    # Saves predictions as png images (useful for Sample generation)
+    # Saves predictions as png images
     if denorm:
         # obj = normalize(obj)
         obj = obj * 0.5 + 0.5
@@ -157,19 +159,18 @@ def save_as_images(obj, file_name="output", denorm=True):
         out = (out * 255).clip(0, 255).astype(np.uint8)
         img_out = Image.fromarray(out)
         current_file_name = file_name + "_%d.png" % i
-        logger.info("Saving image to {}".format(current_file_name))
         img_out.save(current_file_name, "png")
 
 
 def save_as_np(obj, file_name="output", denorm=True):
     # Saves predictions directly as numpy arrays
     if denorm:
-        obj = normalize(obj)
+        # obj = normalize(obj)
+        obj = obj * 0.5 + 0.5
     obj_list = convert_to_np(obj)
 
     for i, out in enumerate(obj_list):
         current_file_name = file_name + "_%d.npy" % i
-        logger.info("Saving image to {}".format(current_file_name))
         np.save(current_file_name, out)
 
 
