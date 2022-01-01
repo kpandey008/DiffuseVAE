@@ -1,69 +1,43 @@
 python main/eval/ddpm/sample_cond.py +dataset=celebamaskhq128/test \
                         dataset.ddpm.data.norm=True \
+                        dataset.ddpm.data.ddpm_latent_path=\'/data1/kushagrap20/cmhq_ddpm_latents_10.pt\' \
+                        dataset.ddpm.model.beta1=1e-6 \
+                        dataset.ddpm.model.beta2=0.6 \
+                        dataset.ddpm.model.n_timesteps=10 \
+                        dataset.ddpm.evaluation.save_mode='image' \
                         dataset.ddpm.evaluation.seed=0 \
-                        dataset.ddpm.evaluation.sample_prefix='gpu_3' \
-                        dataset.ddpm.evaluation.device=\'gpu:3\' \
-                        dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cmhq/ddpmv2-celebamaskhq_24thOct-epoch=259-loss=0.0054.ckpt\' \
+                        dataset.ddpm.evaluation.sample_prefix='gpu_1' \
+                        dataset.ddpm.evaluation.device=\'gpu:0,1\' \
+                        dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cmhq/ddpmv2-celebamaskhq_4thNov_form2_scale[-11]_wavegrad_nc-epoch=251-loss=0.0158.ckpt\' \
                         dataset.ddpm.evaluation.type='form2' \
-                        dataset.ddpm.evaluation.temp=0.1 \
-                        dataset.ddpm.evaluation.batch_size=64 \
-                        dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_form2_cmhq_temp=0.1_5k/\' \
-                        dataset.ddpm.evaluation.n_samples=5000 \
-                        dataset.ddpm.evaluation.n_steps=500 \
+                        dataset.ddpm.evaluation.temp=1.0 \
+                        dataset.ddpm.evaluation.batch_size=16 \
+                        dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_form1_cont_samples_fixedddpm_25thDec/\' \
+                        dataset.ddpm.evaluation.n_samples=512 \
+                        dataset.ddpm.evaluation.n_steps=10 \
                         dataset.ddpm.evaluation.save_vae=True \
                         dataset.ddpm.evaluation.workers=1 \
+                        dataset.ddpm.evaluation.persistent_buffers=False \
                         dataset.vae.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cmhq/vae-epoch=189-train_loss=0.00.ckpt\'
-
-
-# python main/eval/ddpm/sample_cond.py +dataset=afhq128/test \
-#                         dataset.ddpm.data.norm=True \
-#                         dataset.ddpm.evaluation.seed=42 \
-#                         dataset.ddpm.evaluation.sample_prefix='gpu_0' \
-#                         dataset.ddpm.evaluation.device=\'gpu:0,1,2,3\' \
-#                         dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/ddpm_afhq_13thDec_form1_scale[-11]/checkpoints/ddpmv2-afhq_13thDec_form1_scale[-11]-epoch=402-loss=0.0045.ckpt\' \
-#                         dataset.ddpm.evaluation.type='form1' \
-#                         dataset.ddpm.evaluation.temp=1.0 \
-#                         dataset.ddpm.evaluation.batch_size=4 \
-#                         dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/afhq_form1_samples/\' \
-#                         dataset.ddpm.evaluation.n_samples=128 \
-#                         dataset.ddpm.evaluation.n_steps=1000 \
-#                         dataset.ddpm.evaluation.save_vae=True \
-#                         dataset.ddpm.evaluation.workers=1 \
-#                         dataset.vae.evaluation.chkpt_path=\'/data1/kushagrap20/vae_afhq_alpha=1.0/checkpoints/vae-afhq_alpha=1.0-epoch=1499-train_loss=0.0000.ckpt\'
-
 
 # python main/eval/ddpm/sample_cond.py +dataset=cifar10/test \
 #                         dataset.ddpm.data.norm=True \
-#                         dataset.ddpm.model.attn_resolutions=\'16,\' \
-#                         dataset.ddpm.evaluation.seed=3 \
-#                         dataset.ddpm.evaluation.sample_prefix='gpu_3' \
-#                         dataset.ddpm.evaluation.device=\'gpu:3\' \
+#                         dataset.ddpm.model.beta1=1e-6 \
+#                         dataset.ddpm.model.beta2=0.06 \
+#                         dataset.ddpm.model.n_timesteps=100 \
 #                         dataset.ddpm.evaluation.save_mode='image' \
-#                         dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cifar10/ddpmv2-cifar10_form1_scale=[-1,1]_15thNov_sota-epoch=1141-loss=0.0661.ckpt\' \
+#                         dataset.ddpm.evaluation.seed=0 \
+#                         dataset.ddpm.evaluation.sample_prefix='gpu_1' \
+#                         dataset.ddpm.evaluation.device=\'gpu:0,1,2,3\' \
+#                         dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cifar10/ddpmv2-cifar10_form1_scale=[-1,1]_28thDec_wavegrad_nc-epoch=899-loss=0.0293.ckpt\' \
 #                         dataset.ddpm.evaluation.type='form1' \
 #                         dataset.ddpm.evaluation.temp=1.0 \
 #                         dataset.ddpm.evaluation.batch_size=128 \
-#                         dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_cifar10_form1_fidcorrect\' \
-#                         dataset.ddpm.evaluation.n_samples=12500 \
-#                         dataset.ddpm.evaluation.n_steps=1000 \
+#                         dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_form1_cont_samples_fixedddpm_30thDec_mainfig/\' \
+#                         dataset.ddpm.evaluation.n_samples=50000 \
+#                         dataset.ddpm.evaluation.n_steps=100 \
+#                         dataset.ddpm.evaluation.variance='fixedsmall' \
 #                         dataset.ddpm.evaluation.save_vae=False \
 #                         dataset.ddpm.evaluation.workers=1 \
+#                         dataset.ddpm.evaluation.persistent_buffers=False \
 #                         dataset.vae.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cifar10/vae-cifar10-epoch=500-train_loss=0.00.ckpt\'
-
-
-# python main/eval/ddpm/sample_cond.py +dataset=celeba64/test \
-#                         dataset.ddpm.data.norm=True \
-#                         dataset.ddpm.evaluation.seed=3 \
-#                         dataset.ddpm.evaluation.sample_prefix='gpu_3' \
-#                         dataset.ddpm.evaluation.device=\'gpu:3\' \
-#                         dataset.ddpm.evaluation.save_mode='image' \
-#                         dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/ddpm_celeba64_21stNov_form1_sota/checkpoints/ddpmv2-celebamaskhq_celeba64_21stNov_form1_sota-epoch=656-loss=0.0090.ckpt\' \
-#                         dataset.ddpm.evaluation.type='form1' \
-#                         dataset.ddpm.evaluation.temp=1.0 \
-#                         dataset.ddpm.evaluation.batch_size=64 \
-#                         dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_celeba64_form1_sota_50k\' \
-#                         dataset.ddpm.evaluation.n_samples=12500 \
-#                         dataset.ddpm.evaluation.n_steps=1000 \
-#                         dataset.ddpm.evaluation.save_vae=False \
-#                         dataset.ddpm.evaluation.workers=1 \
-#                         dataset.vae.evaluation.chkpt_path=\'/data1/kushagrap20/vae_celeba64_alpha=1.0/checkpoints/vae-celeba64_alpha=1.0-epoch=245-train_loss=0.0000.ckpt\'
