@@ -28,9 +28,9 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from multiprocessing import cpu_count
 
 import numpy as np
-from numpy.lib.npyio import NpzFile
 import torch
 import torchvision.transforms as TF
+from numpy.lib.npyio import NpzFile
 from PIL import Image
 from scipy import linalg
 from torch.nn.functional import adaptive_avg_pool2d

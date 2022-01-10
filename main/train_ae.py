@@ -1,18 +1,17 @@
 import logging
 import os
+
+import hydra
 import pytorch_lightning as pl
 import torchvision.transforms as T
-import hydra
-
 from omegaconf import OmegaConf
-from pytorch_lightning.utilities.seed import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
 # from models.vae import VAE
 from models.vae import VAE
-from util import get_dataset, configure_device
-
+from util import configure_device, get_dataset
 
 logger = logging.getLogger(__name__)
 

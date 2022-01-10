@@ -1,13 +1,14 @@
-import click
 import os
+
+import click
 import numpy as np
 import tensorflow as tf
 
 from eval_utils import (
-    load_samples_from_path,
-    get_inception_features,
-    compute_sample_stats,
     calculate_fid,
+    compute_sample_stats,
+    get_inception_features,
+    load_samples_from_path,
 )
 
 

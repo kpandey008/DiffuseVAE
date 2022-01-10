@@ -2,7 +2,7 @@
 import os
 import sys
 
-p = os.path.join(os.path.abspath("."), 'main')
+p = os.path.join(os.path.abspath("."), "main")
 sys.path.insert(1, p)
 
 import copy
@@ -32,6 +32,8 @@ def interpolate_vae(config):
     image_size = config_ddpm.data.image_size
     z_dim = config_vae.model.z_dim
     n_steps = config_ddpm.evaluation.n_steps
+    ddpm_latent_path = config_ddpm.data.ddpm_latent_path
+    ddpm_latents = torch.load(ddpm_latent_path) if ddpm_latent_path != "" else None
 
     # Lambdas for interpolation
     lam = torch.linspace(0, 1.0, steps=config_ddpm.interpolation.n_steps, device=dev)
@@ -73,6 +75,7 @@ def interpolate_vae(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
+        ddpm_latents=ddpm_latents,
     )
     target_ddpm = ddpm_cls(
         ema_decoder,
@@ -80,6 +83,7 @@ def interpolate_vae(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
+        ddpm_latents=ddpm_latents,
     )
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         config_ddpm.evaluation.chkpt_path,

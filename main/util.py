@@ -1,19 +1,18 @@
 import logging
-import torchvision.transforms as T
 
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torchvision.transforms as T
 from PIL import Image
 
-import models.backbone.resnet as backbone_models
 from datasets import (
+    AFHQDataset,
     CelebADataset,
     CelebAMaskHQDataset,
-    AFHQDataset,
-    ReconstructionDataset,
     CIFAR10Dataset,
-    ReconstructionDatasetv2
+    ReconstructionDataset,
+    ReconstructionDatasetv2,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,32 +29,7 @@ def configure_device(device):
             # Use all GPU's
             gpu_id = "-1"
         return f"cuda:{gpu_id}", gpu_id
-    elif device == "tpu":
-        if _xla_available:
-            return xm.xla_device()
-        raise Exception("Install PyTorch XLA to use TPUs")
-    elif device == "cpu":
-        return "cpu"
-    else:
-        raise NotImplementedError(f"The device type `{device}` is not supported")
-
-
-# TODO: As more backbones are added register them with the modelstore
-def get_resnet_models(backbone_name, pretrained=False, **kwargs):
-    """Returns a backbone and its associated inplanes
-    Args:
-        backbone_name (str): Requested backbone
-        pretrained (bool, optional): If the backbone must be pretrained on ImageNet. Defaults to False.
-    Raises:
-        NotImplementedError: If the backbone_name is not supported
-    """
-    backbone = None
-    supported_backbones = ["resnet18", "resnet34", "resnet50", "resnet101"]
-    if backbone_name not in supported_backbones:
-        raise NotImplementedError(f"The backbone {backbone_name} is not supported")
-
-    backbone = getattr(backbone_models, backbone_name)(pretrained=pretrained, **kwargs)
-    return backbone
+    return device
 
 
 def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
@@ -70,12 +44,14 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         dataset = CelebADataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "celebamaskhq":
         dataset = CelebAMaskHQDataset(root, norm=norm, transform=transform, **kwargs)
-    elif name == 'afhq':
+    elif name == "afhq":
         dataset = AFHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
         dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "reconsv2":
-        dataset = ReconstructionDatasetv2(root, norm=norm, transform=transform, **kwargs)
+        dataset = ReconstructionDatasetv2(
+            root, norm=norm, transform=transform, **kwargs
+        )
     elif name == "cifar10":
         assert image_size == 32
         transform = T.Compose(

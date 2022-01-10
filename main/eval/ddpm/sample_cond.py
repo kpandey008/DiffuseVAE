@@ -7,10 +7,10 @@ p = os.path.join(os.path.abspath("."), "main")
 sys.path.insert(1, p)
 
 import copy
-import torch
 
 import hydra
 import pytorch_lightning as pl
+import torch
 from datasets.latent import LatentDataset
 from models.callbacks import ImageWriter
 from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel

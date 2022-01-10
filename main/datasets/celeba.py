@@ -1,8 +1,8 @@
-import numpy as np
 import os
+
+import numpy as np
 import torch
 import torchvision.transforms as T
-
 from PIL import Image
 from torch.utils.data import Dataset
 from tqdm import tqdm

@@ -1,14 +1,13 @@
 # CREDITS: https://github.com/yang-song/score_sde/blob/main/evaluation.py
 """Utility functions for computing FID/Inception scores."""
 
+import os
+
 import jax
 import numpy as np
-import os
 import six
 import tensorflow as tf
-
 import tensorflow_hub as tfhub
-
 from PIL import Image
 
 from classifier_metrics_numpy import trace_sqrt_product

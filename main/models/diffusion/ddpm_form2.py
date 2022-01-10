@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-from models.diffusion.unet import Unet
-
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
@@ -201,17 +199,3 @@ class DDPMv2(nn.Module):
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t, low_res=low_res)
         return self.decoder(x_t, t, low_res=low_res)
-
-
-if __name__ == "__main__":
-    decoder = Unet(64)
-    ddpm = DDPMv2(decoder)
-    t = torch.randint(0, 1000, size=(4,))
-    sample = torch.randn(4, 3, 128, 128)
-    loss = ddpm(sample, torch.randn_like(sample), t)
-    print(loss)
-
-    # Test sampling
-    x_t = torch.randn(4, 3, 128, 128)
-    samples = ddpm.sample(x_t)
-    print(samples.shape)
