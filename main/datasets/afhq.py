@@ -2,23 +2,14 @@ import os
 
 import numpy as np
 import torch
-import torchvision.transforms as T
 from PIL import Image
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
 
-# A very simplistic implementation of the CelebA dataset supporting only images and no annotations
-# TODO: Add functionality to download CelebA and setup the dataset automatically
-class CelebADataset(Dataset):
-    def __init__(
-        self,
-        root,
-        norm=True,
-        subsample_size=None,
-        transform=None,
-        **kwargs
-    ):
+class AFHQDataset(Dataset):
+    def __init__(self, root, norm=True, subsample_size=None, transform=None, **kwargs):
+        # We only train on the AFHQ train set (around 14630 images)
         if not os.path.isdir(root):
             raise ValueError(f"The specified root: {root} does not exist")
         self.root = root
@@ -27,8 +18,13 @@ class CelebADataset(Dataset):
 
         self.images = []
 
-        for img in tqdm(os.listdir(root)):
-            self.images.append(os.path.join(self.root, img))
+        subfolder_list = ['dog', 'cat', 'wild']
+        base_path = os.path.join(self.root, "train")
+        for subfolder in subfolder_list:
+            sub_path = os.path.join(base_path, subfolder)
+
+            for img in tqdm(os.listdir(sub_path)):
+                self.images.append(os.path.join(sub_path, img))
 
         # Subsample the dataset (if enabled)
         if subsample_size is not None:
@@ -56,6 +52,6 @@ class CelebADataset(Dataset):
 
 
 if __name__ == "__main__":
-    root = "/data/kushagrap20/datasets/img_align_celeba"
-    dataset = CelebADataset(root, subsample_size=10000)
+    root = "/data1/kushagrap20/datasets/afhq"
+    dataset = AFHQDataset(root, subsample_size=None)
     print(len(dataset))

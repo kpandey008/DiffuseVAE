@@ -3,13 +3,14 @@
 import os
 import sys
 
-p = os.path.join(os.path.abspath("."), 'main')
+p = os.path.join(os.path.abspath("."), "main")
 sys.path.insert(1, p)
 
 import copy
 
 import hydra
 import pytorch_lightning as pl
+import torch
 from datasets.latent import LatentDataset
 from models.callbacks import ImageWriter
 from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel
@@ -35,6 +36,8 @@ def sample_cond(config):
     n_steps = config_ddpm.evaluation.n_steps
     n_samples = config_ddpm.evaluation.n_samples
     image_size = config_ddpm.data.image_size
+    ddpm_latent_path = config_ddpm.data.ddpm_latent_path
+    ddpm_latents = torch.load(ddpm_latent_path) if ddpm_latent_path != "" else None
 
     # Load pretrained VAE
     vae = VAE.load_from_checkpoint(
@@ -73,6 +76,7 @@ def sample_cond(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
+        ddpm_latents=ddpm_latents,
     )
     target_ddpm = ddpm_cls(
         ema_decoder,
@@ -80,6 +84,7 @@ def sample_cond(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
+        ddpm_latents=ddpm_latents,
     )
 
     # NOTE: Using strict=False since the VAE model is not included
@@ -101,7 +106,7 @@ def sample_cond(config):
     z_dataset = LatentDataset(
         (n_samples, config_vae.model.z_dim, 1, 1),
         (n_samples, 3, image_size, image_size),
-        n_steps=n_steps,
+        share_ddpm_latent=True if ddpm_latent_path != "" else False,
     )
 
     # Setup devices

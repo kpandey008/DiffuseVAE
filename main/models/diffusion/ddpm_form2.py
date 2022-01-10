@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-from models.diffusion.unet import Unet
-
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
@@ -12,7 +10,13 @@ def extract(a, t, x_shape):
 
 class DDPMv2(nn.Module):
     def __init__(
-        self, decoder, beta_1=1e-4, beta_2=0.02, T=1000, var_type="fixedlarge"
+        self,
+        decoder,
+        beta_1=1e-4,
+        beta_2=0.02,
+        T=1000,
+        var_type="fixedlarge",
+        ddpm_latents=None,
     ):
         super().__init__()
         self.decoder = decoder
@@ -20,6 +24,7 @@ class DDPMv2(nn.Module):
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.var_type = var_type
+        self.ddpm_latents = ddpm_latents
 
         # Main constants
         self.register_buffer(
@@ -138,12 +143,20 @@ class DDPMv2(nn.Module):
     def sample(self, x_t, cond=None, n_steps=None, checkpoints=[]):
         # The sampling process goes here!
         x = x_t
+        B, *_ = x_t.shape
         sample_dict = {}
+
+        if self.ddpm_latents is not None:
+            self.ddpm_latents = self.ddpm_latents.to(x_t.device)
 
         num_steps = self.T if n_steps is None else n_steps
         checkpoints = [num_steps] if checkpoints == [] else checkpoints
         for idx, t in enumerate(reversed(range(0, num_steps))):
-            z = torch.randn_like(x_t)
+            z = (
+                torch.randn_like(x_t)
+                if self.ddpm_latents is None
+                else torch.stack([self.ddpm_latents[idx]] * B)
+            )
             (
                 post_mean,
                 post_variance,
@@ -186,17 +199,3 @@ class DDPMv2(nn.Module):
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t, low_res=low_res)
         return self.decoder(x_t, t, low_res=low_res)
-
-
-if __name__ == "__main__":
-    decoder = Unet(64)
-    ddpm = DDPMv2(decoder)
-    t = torch.randint(0, 1000, size=(4,))
-    sample = torch.randn(4, 3, 128, 128)
-    loss = ddpm(sample, torch.randn_like(sample), t)
-    print(loss)
-
-    # Test sampling
-    x_t = torch.randn(4, 3, 128, 128)
-    samples = ddpm.sample(x_t)
-    print(samples.shape)

@@ -10,7 +10,8 @@ from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
 from models.callbacks import EMAWeightUpdate
-from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel, UNetModel
+from models.diffusion import (DDPM, DDPMv2, DDPMWrapper, SuperResModel,
+                              UNetModel)
 from util import configure_device, get_dataset
 
 logger = logging.getLogger(__name__)

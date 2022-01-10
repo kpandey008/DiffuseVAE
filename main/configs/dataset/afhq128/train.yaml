@@ -2,12 +2,11 @@
 ddpm:
   data:
     root: ???
-    name: "celebamaskhq"
+    name: "afhq"
     image_size: 128
     hflip: True
     n_channels: 3
     norm: True
-    ddpm_latent_path: ""
 
   model:
     dim : 128
@@ -20,47 +19,54 @@ ddpm:
     beta2: 0.02
     n_timesteps: 1000
 
-  evaluation:
-    chkpt_path: ???
-    save_path: ???
-    type: 'form1'
+  training:
     seed: 0
-    device: "gpu:0"
-    n_samples: 50000
-    n_steps: 1000
-    workers: 2
+    fp16: False
+    use_ema: True
+    type: 'form1'
+    ema_decay: 0.9999
     batch_size: 8
-    save_vae: False
-    variance: "fixedsmall"
-    sample_prefix: ""
-    temp: 1.0
-    save_mode: image
-  
-  interpolation:
-    n_steps: 10
+    epochs: 5000
+    log_step: 1
+    device: "tpu"
+    chkpt_interval: 1
+    optimizer: "Adam"
+    lr: 2e-5
+    restore_path: ""
+    results_dir: ???
+    workers: 16
+    grad_clip: 1.0
+    n_anneal_steps: 5000
+    loss: "l2"
+    chkpt_prefix: ""
 
 # VAE config used for VAE training
 vae:
   data:
     root: ???
-    name: "celebamaskhq"
+    name: "afhq"
     image_size: 128
     n_channels: 3
+    hflip: False
 
   model:
-    z_dim: 1024
     enc_block_config : "128x1,128d2,128t64,64x3,64d2,64t32,32x3,32d2,32t16,16x7,16d2,16t8,8x3,8d2,8t4,4x3,4d4,4t1,1x2"
     enc_channel_config: "128:64,64:64,32:128,16:128,8:256,4:512,1:1024"
     dec_block_config: "1x1,1u4,1t4,4x2,4u2,4t8,8x2,8u2,8t16,16x6,16u2,16t32,32x2,32u2,32t64,64x2,64u2,64t128,128x1"
     dec_channel_config: "128:64,64:64,32:128,16:128,8:256,4:512,1:1024"
 
-  evaluation:
-    chkpt_path: ???
-    save_path: ???
+  training:
     seed: 0
+    fp16: False
+    batch_size: 16
+    epochs: 300
+    log_step: 1
     device: "gpu:0"
+    chkpt_interval: 1
+    optimizer: "Adam"
+    lr: 1e-4
+    restore_path: ""
+    results_dir: ???
     workers: 2
-    batch_size: 8
-    n_samples: 50000
-    sample_prefix: ""
-    save_mode: image
+    chkpt_prefix: ""
+    alpha: 1.0

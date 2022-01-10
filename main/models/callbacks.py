@@ -1,13 +1,12 @@
-import math
 import os
-import torch
 from typing import Sequence, Union
 
+import torch
 from pytorch_lightning import Callback, LightningModule, Trainer
 from pytorch_lightning.callbacks import BasePredictionWriter
 from torch import Tensor
 from torch.nn import Module
-from util import compare_samples, save_as_images, save_as_np
+from util import save_as_images, save_as_np
 
 
 class EMAWeightUpdate(Callback):

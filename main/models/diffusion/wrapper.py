@@ -1,8 +1,7 @@
-from models.diffusion.ddpm_form2 import DDPMv2
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import torchvision.transforms as T
+from models.diffusion.ddpm_form2 import DDPMv2
 
 
 class DDPMWrapper(pl.LightningModule):

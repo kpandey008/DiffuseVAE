@@ -2,12 +2,11 @@
 ddpm:
   data:
     root: ???
-    name: "celebamaskhq"
+    name: "afhq"
     image_size: 128
     hflip: True
     n_channels: 3
     norm: True
-    ddpm_latent_path: ""
 
   model:
     dim : 128
@@ -43,7 +42,7 @@ ddpm:
 vae:
   data:
     root: ???
-    name: "celebamaskhq"
+    name: "afhq"
     image_size: 128
     n_channels: 3
 
