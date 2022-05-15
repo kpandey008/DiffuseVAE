@@ -43,10 +43,10 @@ def sample_cond(config):
     vae = VAE.load_from_checkpoint(
         config_vae.evaluation.chkpt_path,
         input_res=image_size,
-        enc_block_str=config_vae.model.enc_block_config,
-        dec_block_str=config_vae.model.dec_block_config,
-        enc_channel_str=config_vae.model.enc_channel_config,
-        dec_channel_str=config_vae.model.dec_channel_config,
+        # enc_block_str=config_vae.model.enc_block_config,
+        # dec_block_str=config_vae.model.dec_block_config,
+        # enc_channel_str=config_vae.model.enc_channel_config,
+        # dec_channel_str=config_vae.model.dec_channel_config,
     )
     vae.eval()
 

@@ -75,20 +75,20 @@ python main/eval/ddpm/sample_cond.py +dataset=cifar10/test \
                         dataset.ddpm.model.dropout=0.3 \
                         dataset.ddpm.model.n_residual=4 \
                         dataset.ddpm.model.n_heads=8 \
-                        dataset.ddpm.evaluation.seed=0 \
-                        dataset.ddpm.evaluation.sample_prefix='gpu_0' \
-                        dataset.ddpm.evaluation.device=\'gpu:0\' \
+                        dataset.ddpm.evaluation.seed=3 \
+                        dataset.ddpm.evaluation.sample_prefix='gpu_3' \
+                        dataset.ddpm.evaluation.device=\'gpu:3\' \
                         dataset.ddpm.evaluation.save_mode='image' \
-                        dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/ddpm_cifar10_form1_scale=[-1,1]_7thApr_sota_nres=3_nheads=4_mults=1222_dim=256/checkpoints/ddpmv2-cifar10_form1_scale=[-1,1]_7thApr_sota_nres=3_nheads=4_mults=1222_dim=256-epoch=377-loss=0.0269.ckpt\' \
+                        dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/ddpm_cifar10_form1_scale=[-1,1]_7thMay_sota_nres=4_nheads=8_mults=1222_dim=128/checkpoints/ddpmv2-cifar10_form1_scale=[-1,1]_7thMay_sota_nres=4_nheads=8_mults=1222_dim=128-epoch=742-loss=0.0150.ckpt\' \
                         dataset.ddpm.evaluation.type='form1' \
                         dataset.ddpm.evaluation.temp=1.0 \
                         dataset.ddpm.evaluation.batch_size=64 \
-                        dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_cifar10_form1_newsota_3\' \
+                        dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_cifar10_form1_newsota_beta=0.2\' \
                         dataset.ddpm.evaluation.n_samples=2500 \
                         dataset.ddpm.evaluation.n_steps=1000 \
                         dataset.ddpm.evaluation.save_vae=False \
                         dataset.ddpm.evaluation.workers=1 \
-                        dataset.vae.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cifar10/vae-cifar10-epoch=500-train_loss=0.00.ckpt\'
+                        dataset.vae.evaluation.chkpt_path=\'/data1/kushagrap20/compactvae-cifar10_30thApr_beta=0.2-epoch=499-train_loss=0.0000.ckpt\'
 
 
 # python main/eval/ddpm/sample_cond.py +dataset=celeba64/test \

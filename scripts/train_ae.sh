@@ -7,10 +7,11 @@ python main/train_ae.py +dataset=celebamaskhq128/train \
                      dataset.vae.training.log_step=50 \
                      dataset.vae.training.epochs=1500 \
                      dataset.vae.training.device=\'gpu:0,1,2,3\' \
-                     dataset.vae.training.results_dir=\'/data1/kushagrap20/vae_cmhq128_alpha=0.05/\' \
-                     dataset.vae.training.workers=4 \
-                     dataset.vae.training.chkpt_prefix=\'cmhq128_alpha=0.05\' \
-                     dataset.vae.training.alpha=0.05
+                     dataset.vae.training.results_dir=\'/data1/kushagrap20/vae_cmhq128_alpha=1.0/\' \
+                     dataset.vae.training.restore_path=\'/data1/kushagrap20/vae_cmhq128_alpha=1.0/checkpoints/vae-cmhq128_alpha=1.0-epoch=04-train_loss=0.0000.ckpt\' \
+                     dataset.vae.training.workers=2 \
+                     dataset.vae.training.chkpt_prefix=\'cmhq128_alpha=1.0\' \
+                     dataset.vae.training.alpha=1.0
 
 # AFHQ training
 # python main/train_ae.py +dataset=afhq128/train \

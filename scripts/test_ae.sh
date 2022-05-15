@@ -6,14 +6,40 @@
 #                                 ~/vae_celeba64_alpha\=1.0/checkpoints/vae-celeba64_alpha\=1.0-epoch\=245-train_loss\=0.0000.ckpt \
 #                                 ~/datasets/img_align_celeba/
 
+# python main/test.py reconstruct --device gpu:0 \
+#                                 --dataset cifar10 \
+#                                 --image-size 32 \
+#                                 --save-path ~/vae_cifar10_beta\=0.2_recons/ \
+#                                 --write-mode numpy \
+#                                 ~/compactvae-cifar10_30thApr_beta\=0.2-epoch\=499-train_loss\=0.0000.ckpt \
+#                                 ~/datasets/
 
-python main/test.py reconstruct --device gpu:0 \
-                                --dataset afhq \
-                                --image-size 128 \
-                                --save-path ~/reconstructions/afhq_reconsv2/ \
-                                --write-mode numpy \
-                                ~/vae_afhq_alpha\=1.0/checkpoints/vae-afhq_alpha=1.0-epoch=1499-train_loss=0.0000.ckpt \
-                                ~/datasets/afhq/
+# python main/test.py sample --device gpu:0 \
+#                             --image-size 32 \
+#                             --seed 0 \
+#                             --num-samples 50000 \
+#                             --save-path ~/vae_samples_cifar10_deleteme/ \
+#                             --write-mode image \
+#                             512 \
+#                             /data1/kushagrap20/checkpoints/cifar10/vae-cifar10-epoch=500-train_loss=0.00.ckpt \
+
+python main/test.py sample --device gpu:0 \
+                            --image-size 128 \
+                            --seed 0 \
+                            --num-samples 50000 \
+                            --save-path ~/vae_samples_cmhq128_50k/ \
+                            --write-mode image \
+                            1024 \
+                            /data1/kushagrap20/vae_cmhq128_alpha=0.05/checkpoints/vae-cmhq128_alpha=0.05-epoch=1499-train_loss=0.0000.ckpt \
+
+
+# python main/test.py reconstruct --device gpu:0 \
+#                                 --dataset afhq \
+#                                 --image-size 128 \
+#                                 --save-path ~/reconstructions/afhq_reconsv2/ \
+#                                 --write-mode numpy \
+#                                 ~/vae_afhq_alpha\=1.0/checkpoints/vae-afhq_alpha=1.0-epoch=1499-train_loss=0.0000.ckpt \
+#                                 ~/datasets/afhq/
 
 # python main/test.py sample --device gpu:0 \
 #                             --image-size 128 \
@@ -25,7 +51,8 @@ python main/test.py reconstruct --device gpu:0 \
 #                             ~/vae_afhq_alpha\=1.0/checkpoints/vae-afhq_alpha=1.0-epoch=1499-train_loss=0.0000.ckpt \
 
 # python main/test.py reconstruct --device gpu:0 \
+#                            --dataset celebamaskhq \
 #                            --num-samples 16 \
 #                            --save-path ~/vae_alpha_1_0_samples/ \
-#                            ~/checkpoints_old/celebahq128/celebahq128_ae/vae-epoch\=189-train_loss\=0.00.ckpt \
+#                            ~/checkpoints/cmhq/vae-epoch\=189-train_loss\=0.00.ckpt \
 #                            ~/datasets/CelebAMask-HQ/

@@ -38,21 +38,20 @@
 #                      dataset.ddpm.training.workers=2 \
 #                      dataset.ddpm.training.chkpt_prefix='celebamaskhq_celeba64_4thDec_form2_sota'
 
-python main/train_ddpm.py +dataset=cifar10/train \
-                     dataset.ddpm.data.root='/data1/kushagrap20/reconstructions/cifar10/' \
-                     dataset.ddpm.data.name='recons' \
-                     dataset.ddpm.data.norm=True \
-                     dataset.ddpm.data.hflip=True \
-                     dataset.ddpm.model.dim=128 \
-                     dataset.ddpm.model.dropout=0.3 \
-                     dataset.ddpm.model.attn_resolutions=\'16,\' \
-                     dataset.ddpm.model.n_residual=4 \
-                     dataset.ddpm.model.dim_mults=\'1,2,2,2\' \
-                     dataset.ddpm.model.n_heads=8 \
-                     dataset.ddpm.training.type='form1' \
-                     dataset.ddpm.training.batch_size=32 \
-                     dataset.ddpm.training.device=\'gpu:0,1,2,3\' \
-                     dataset.ddpm.training.results_dir=\'/data1/kushagrap20/ddpm_cifar10_form1_scale=[-1,1]_7thApr_sota_nres=3_nheads=4_mults=1222_dim=256/\' \
-                     dataset.ddpm.training.restore_path=\'/data1/kushagrap20/ddpm_cifar10_form1_scale=[-1,1]_7thApr_sota_nres=3_nheads=4_mults=1222_dim=256/checkpoints/ddpmv2-cifar10_form1_scale=[-1,1]_7thApr_sota_nres=3_nheads=4_mults=1222_dim=256-epoch=377-loss=0.0269.ckpt\' \
-                     dataset.ddpm.training.workers=2 \
-                     dataset.ddpm.training.chkpt_prefix=\'cifar10_form1_scale=[-1,1]_7thApr_sota_nres=3_nheads=4_mults=1222_dim=256\'
+# python main/train_ddpm.py +dataset=cifar10/train \
+#                      dataset.ddpm.data.root=\'/data1/kushagrap20/vae_cifar10_beta=0.2_recons/\' \
+#                      dataset.ddpm.data.name='recons' \
+#                      dataset.ddpm.data.norm=True \
+#                      dataset.ddpm.data.hflip=True \
+#                      dataset.ddpm.model.dim=128 \
+#                      dataset.ddpm.model.dropout=0.3 \
+#                      dataset.ddpm.model.attn_resolutions=\'16,\' \
+#                      dataset.ddpm.model.n_residual=4 \
+#                      dataset.ddpm.model.dim_mults=\'1,2,2,2\' \
+#                      dataset.ddpm.model.n_heads=8 \
+#                      dataset.ddpm.training.type='form1' \
+#                      dataset.ddpm.training.batch_size=32 \
+#                      dataset.ddpm.training.device=\'gpu:0,1,2,3\' \
+#                      dataset.ddpm.training.results_dir=\'/data1/kushagrap20/ddpm_cifar10_form1_scale=[-1,1]_7thMay_sota_nres=4_nheads=8_mults=1222_dim=128/\' \
+#                      dataset.ddpm.training.workers=2 \
+#                      dataset.ddpm.training.chkpt_prefix=\'cifar10_form1_scale=[-1,1]_7thMay_sota_nres=4_nheads=8_mults=1222_dim=128\'
