@@ -1,13 +1,22 @@
 import torch
 from torch.utils.data import Dataset
+from joblib import load
 
 
 class LatentDataset(Dataset):
-    def __init__(self, z_vae_size, z_ddpm_size, share_ddpm_latent=False, **kwargs):
+    def __init__(self, z_vae_size, z_ddpm_size, share_ddpm_latent=False, expde_model_path=None, **kwargs):
         # NOTE: The batch index must be included in the latent code size input
-        _, *dims = z_ddpm_size
+        n_samples, *dims = z_ddpm_size
+
         self.z_vae = torch.randn(z_vae_size)
         self.share_ddpm_latent = share_ddpm_latent
+
+        # Load the Ex-PDE model and sample z_vae from it instead!
+        if expde_model_path is not None:
+            print('Found an Ex-PDE model. Will sample z_vae from it instead!')
+            gmm = load(expde_model_path)
+            self.z_vae = torch.from_numpy(gmm.sample(n_samples)[0]).view(z_vae_size).float()
+            assert self.z_vae.size() == z_vae_size
 
         if self.share_ddpm_latent:
             self.z_ddpm = torch.randn(dims)

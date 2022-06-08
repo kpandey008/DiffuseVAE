@@ -9,7 +9,7 @@ class DDPMWrapper(pl.LightningModule):
         self,
         online_network,
         target_network,
-        vae=None,
+        vae,
         lr=2e-5,
         n_anneal_steps=0,
         loss="l1",
@@ -19,14 +19,15 @@ class DDPMWrapper(pl.LightningModule):
         eval_mode="sample",
         pred_steps=None,
         pred_checkpoints=[],
-        data_norm=True,
         temp=1.0,
+        z_cond=False,
     ):
         super().__init__()
         assert loss in ["l1", "l2"]
         assert eval_mode in ["sample", "recons"]
         self.sample_from = sample_from
         self.conditional = conditional
+        self.z_cond = z_cond
         self.online_network = online_network
         self.target_network = target_network
         self.vae = vae
@@ -41,17 +42,16 @@ class DDPMWrapper(pl.LightningModule):
         self.eval_mode = eval_mode
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
         self.pred_checkpoints = pred_checkpoints
-        self.data_norm = data_norm
         self.temp = temp
 
         # Disable automatic optimization
         self.automatic_optimization = False
 
-    def forward(self, x, cond=None, n_steps=None, checkpoints=[]):
+    def forward(self, x, cond=None, z=None, n_steps=None, checkpoints=[]):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
         )
-        return sample_nw.sample(x, cond=cond, n_steps=n_steps, checkpoints=checkpoints)
+        return sample_nw.sample(x, cond=cond, z=z, n_steps=n_steps, checkpoints=checkpoints)
 
     def training_step(self, batch, batch_idx):
         # Optimizers
@@ -59,8 +59,14 @@ class DDPMWrapper(pl.LightningModule):
         lr_sched = self.lr_schedulers()
 
         cond = None
+        z = None
         if self.conditional:
-            cond, x = batch
+            x = batch
+            with torch.no_grad():
+                mu, logvar = self.vae.encode(x * 0.5 + 0.5)
+                z = self.vae.reparameterize(mu, logvar)
+                cond = self.vae.decode(z)
+                cond = 2 * cond - 1
         else:
             x = batch
 
@@ -73,7 +79,7 @@ class DDPMWrapper(pl.LightningModule):
         eps = torch.randn_like(x)
 
         # Predict noise
-        eps_pred = self.online_network(x, eps, t, low_res=cond)
+        eps_pred = self.online_network(x, eps, t, low_res=cond, z=z if self.z_cond else None)
 
         # Compute loss
         loss = self.criterion(eps, eps_pred)
@@ -97,6 +103,7 @@ class DDPMWrapper(pl.LightningModule):
             return self(
                 x_t,
                 cond=None,
+                z=None,
                 n_steps=self.pred_steps,
                 checkpoints=self.pred_checkpoints,
             )
@@ -112,9 +119,7 @@ class DDPMWrapper(pl.LightningModule):
             x_t = self.temp * x_t[0]  # This is really a one element tuple
 
         # Normalize
-        if self.data_norm:
-            # Assuming between [0, 1]
-            recons = 2 * recons - 1
+        recons = 2 * recons - 1
 
         # Formulation-2 initial latent
         if isinstance(self.online_network, DDPMv2):
@@ -124,6 +129,7 @@ class DDPMWrapper(pl.LightningModule):
             self(
                 x_t,
                 cond=recons,
+                z=z if self.z_cond else None,
                 n_steps=self.pred_steps,
                 checkpoints=self.pred_checkpoints,
             ),

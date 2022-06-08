@@ -57,6 +57,7 @@ vae:
   evaluation:
     chkpt_path: ???
     save_path: ???
+    expde_model_path: ""
     seed: 0
     device: "gpu:0"
     workers: 2

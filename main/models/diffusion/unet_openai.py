@@ -292,6 +292,7 @@ class ResBlock(TimestepBlock):
         emb_out = self.emb_layers(emb).type(h.dtype)
         while len(emb_out.shape) < len(h.shape):
             emb_out = emb_out[..., None]
+
         if self.use_scale_shift_norm:
             out_norm, out_rest = self.out_layers[0], self.out_layers[1:]
             scale, shift = th.chunk(emb_out, 2, dim=1)
@@ -389,11 +390,13 @@ class UNetModel(nn.Module):
         channel_mult=(1, 2, 4, 8),
         conv_resample=True,
         dims=2,
+        z_dim=None,
         num_classes=None,
         use_checkpoint=False,
         num_heads=1,
         num_heads_upsample=-1,
         use_scale_shift_norm=False,
+        use_z=False
     ):
         super().__init__()
 
@@ -419,6 +422,14 @@ class UNetModel(nn.Module):
             nn.SiLU(),
             linear(time_embed_dim, time_embed_dim),
         )
+
+        self.proj = None
+        if use_z:
+            self.proj = nn.Sequential(
+                linear(z_dim, time_embed_dim),
+                nn.SiLU(),
+                linear(time_embed_dim, time_embed_dim),
+            )
 
         if self.num_classes is not None:
             self.label_emb = nn.Embedding(num_classes, time_embed_dim)
@@ -523,7 +534,7 @@ class UNetModel(nn.Module):
         """
         return next(self.input_blocks.parameters()).dtype
 
-    def forward(self, x, timesteps, y=None, **kwargs):
+    def forward(self, x, timesteps, z=None, y=None, **kwargs):
         """
         Apply the model to an input batch.
         :param x: an [N x C x ...] Tensor of inputs.
@@ -538,6 +549,15 @@ class UNetModel(nn.Module):
         hs = []
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
 
+        # Incorporate latent code infomation (if any)
+        z_proj = None
+        if z is not None:
+            assert self.proj is not None
+            z_proj = self.proj(z)
+            assert z_proj.shape == emb.shape
+            emb = emb + z_proj
+
+        # Incorporate class label information (if any)
         if self.num_classes is not None:
             assert y.shape == (x.shape[0],)
             emb = emb + self.label_emb(y)

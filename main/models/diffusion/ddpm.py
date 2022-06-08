@@ -83,7 +83,7 @@ class DDPM(nn.Module):
             - extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * eps
         )
 
-    def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True, cond=None):
+    def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True, cond=None, z_vae=None):
         B = x_t.size(0)
         t_ = torch.full((x_t.size(0),), t, device=x_t.device, dtype=torch.long)
         assert t_.shape == torch.Size(
@@ -94,7 +94,7 @@ class DDPM(nn.Module):
 
         # Generate the reconstruction from x_t
         x_recons = self._predict_xstart_from_eps(
-            x_t, t_, self.decoder(x_t, t_, low_res=cond)
+            x_t, t_, self.decoder(x_t, t_, low_res=cond, z=z_vae)
         )
 
         # Clip
@@ -131,7 +131,7 @@ class DDPM(nn.Module):
         post_log_variance = extract(p_log_variance, t_, x_t.shape)
         return post_mean, post_variance, post_log_variance
 
-    def sample(self, x_t, cond=None, n_steps=None, checkpoints=[]):
+    def sample(self, x_t, cond=None, z_vae=None, n_steps=None, checkpoints=[]):
         # The sampling process goes here!
         x = x_t
         B, *_ = x_t.shape
@@ -157,6 +157,7 @@ class DDPM(nn.Module):
                 x,
                 t,
                 cond=cond,
+                z_vae=z_vae,
             )
             nonzero_mask = (
                 torch.tensor(t != 0, device=x.device)
@@ -179,7 +180,7 @@ class DDPM(nn.Module):
             self.minus_sqrt_alpha_bar, t, x_start.shape
         )
 
-    def forward(self, x, eps, t, low_res=None):
+    def forward(self, x, eps, t, low_res=None, z=None):
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t)
-        return self.decoder(x_t, t, low_res=low_res)
+        return self.decoder(x_t, t, low_res=low_res, z=z)
