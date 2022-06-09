@@ -23,6 +23,8 @@ ddpm:
   evaluation:
     chkpt_path: ???
     save_path: ???
+    z_cond: False
+    z_dim: 512
     type: 'form1'
     seed: 0
     device: "gpu:0"

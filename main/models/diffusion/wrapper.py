@@ -51,7 +51,7 @@ class DDPMWrapper(pl.LightningModule):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
         )
-        return sample_nw.sample(x, cond=cond, z=z, n_steps=n_steps, checkpoints=checkpoints)
+        return sample_nw.sample(x, cond=cond, z_vae=z, n_steps=n_steps, checkpoints=checkpoints)
 
     def training_step(self, batch, batch_idx):
         # Optimizers

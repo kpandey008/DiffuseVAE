@@ -59,6 +59,9 @@ def sample_cond(config):
         use_checkpoint=False,
         dropout=config_ddpm.model.dropout,
         num_heads=config_ddpm.model.n_heads,
+        z_dim=config_ddpm.evaluation.z_dim,
+        use_scale_shift_norm=config_ddpm.evaluation.z_cond,
+        use_z=config_ddpm.evaluation.z_cond,
     )
 
     ema_decoder = copy.deepcopy(decoder)
@@ -95,6 +98,7 @@ def sample_cond(config):
         eval_mode="sample",
         data_norm=config_ddpm.data.norm,
         temp=config_ddpm.evaluation.temp,
+        z_cond=config_ddpm.evaluation.z_cond,
     )
 
     # Create predict dataset of latents

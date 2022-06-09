@@ -12,7 +12,7 @@ class LatentDataset(Dataset):
         self.share_ddpm_latent = share_ddpm_latent
 
         # Load the Ex-PDE model and sample z_vae from it instead!
-        if expde_model_path is not None:
+        if expde_model_path is not None and expde_model_path != "":
             print('Found an Ex-PDE model. Will sample z_vae from it instead!')
             gmm = load(expde_model_path)
             self.z_vae = torch.from_numpy(gmm.sample(n_samples)[0]).view(z_vae_size).float()

@@ -61,8 +61,9 @@ def train(config):
         use_checkpoint=False,
         dropout=config.model.dropout,
         num_heads=config.model.n_heads,
-        use_scale_shift_norm=config.training.use_z,
-        use_z=config.training.use_z,
+        z_dim=config.training.z_dim,
+        use_scale_shift_norm=config.training.z_cond,
+        use_z=config.training.z_cond,
     )
 
     # EMA parameters are non-trainable
