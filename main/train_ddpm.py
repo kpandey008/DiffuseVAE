@@ -10,8 +10,7 @@ from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
 from models.callbacks import EMAWeightUpdate
-from models.diffusion import (DDPM, DDPMv2, DDPMWrapper, SuperResModel,
-                              UNetModel)
+from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel, UNetModel
 from models.vae import VAE
 from util import configure_device, get_dataset
 
@@ -168,7 +167,7 @@ def train(config):
 
     logger.info(f"Running Trainer with kwargs: {train_kwargs}")
     trainer = pl.Trainer(**train_kwargs)
-    trainer.fit(ddpm_wrapper, train_dataloader=loader)
+    trainer.fit(ddpm_wrapper, train_dataloaders=loader)
 
 
 if __name__ == "__main__":
