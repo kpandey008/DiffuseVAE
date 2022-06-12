@@ -78,7 +78,7 @@ class DDPMWrapper(pl.LightningModule):
 
         # For truncated resampling
         if self.sample_method == "ddim":
-            raise ValueError("DDIM is only supported for truncated sampling")
+            raise ValueError("DDIM is only supported for spaced sampling")
         return sample_nw.sample(
             x, cond=cond, z_vae=z, n_steps=n_steps, checkpoints=checkpoints
         )

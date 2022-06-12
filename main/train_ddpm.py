@@ -111,7 +111,7 @@ def train(config):
     # Trainer
     train_kwargs = {}
     restore_path = config.training.restore_path
-    if restore_path is not None:
+    if restore_path != "":
         # Restore checkpoint
         train_kwargs["resume_from_checkpoint"] = restore_path
 

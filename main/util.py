@@ -154,7 +154,6 @@ def save_as_images(obj, file_name="output", denorm=True):
         out = (out * 255).clip(0, 255).astype(np.uint8)
         img_out = Image.fromarray(out)
         current_file_name = file_name + "_%d.png" % i
-        logger.info("Saving image to {}".format(current_file_name))
         img_out.save(current_file_name, "png")
 
 
@@ -166,7 +165,6 @@ def save_as_np(obj, file_name="output", denorm=True):
 
     for i, out in enumerate(obj_list):
         current_file_name = file_name + "_%d.npy" % i
-        logger.info("Saving image to {}".format(current_file_name))
         np.save(current_file_name, out)
 
 
