@@ -74,21 +74,24 @@ python main/eval/ddpm/sample_cond.py +dataset=cifar10/test \
                         dataset.ddpm.model.attn_resolutions=\'16,\' \
                         dataset.ddpm.model.dropout=0.3 \
                         dataset.ddpm.model.n_heads=8 \
-                        dataset.ddpm.evaluation.seed=3 \
-                        dataset.ddpm.evaluation.sample_prefix='gpu_3' \
-                        dataset.ddpm.evaluation.device=\'gpu:3\' \
+                        dataset.ddpm.evaluation.seed=1 \
+                        dataset.ddpm.evaluation.sample_prefix='gpu_1' \
+                        dataset.ddpm.evaluation.device=\'gpu:1\' \
                         dataset.ddpm.evaluation.save_mode='image' \
-                        dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/diffusevae_cifar10_rework_form1__7thJune_sota_nheads=8_dropout=0.3/checkpoints/ddpmv2-cifar10_rework_form1__7thJune_sota_nheads=8_dropout=0.3-epoch=1006-loss=0.0177.ckpt\' \
+                        dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/diffusevae_cifar10_rework_form1__7thJune_sota_nheads=8_dropout=0.3/checkpoints/ddpmv2-cifar10_rework_form1__7thJune_sota_nheads=8_dropout=0.3-epoch=2850-loss=0.0299.ckpt\' \
                         dataset.ddpm.evaluation.type='form1' \
-                        dataset.ddpm.evaluation.temp=1.0 \
+                        dataset.ddpm.evaluation.resample_strategy='truncated' \
+                        dataset.ddpm.evaluation.sample_method='ddpm' \
+                        dataset.ddpm.evaluation.sample_from='target' \
+                        dataset.ddpm.evaluation.temp=0.1 \
                         dataset.ddpm.evaluation.batch_size=64 \
-                        dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_cifar10_epoch=1006_expde_gmm10\' \
-                        dataset.ddpm.evaluation.n_samples=2500 \
-                        dataset.ddpm.evaluation.n_steps=1000 \
+                        dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_cifar10_deleteme_ddim\' \
+                        dataset.ddpm.evaluation.z_cond=False \
+                        dataset.ddpm.evaluation.n_samples=64 \
+                        dataset.ddpm.evaluation.n_steps=100 \
                         dataset.ddpm.evaluation.save_vae=False \
                         dataset.ddpm.evaluation.workers=1 \
-                        dataset.vae.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cifar10/vae-cifar10-epoch=500-train_loss=0.00.ckpt\' \
-                        dataset.vae.evaluation.expde_model_path=\'/data1/kushagrap20/cifar10_latents/gmm_z/gmm_10.joblib\'
+                        dataset.vae.evaluation.chkpt_path=\'/data1/kushagrap20/checkpoints/cifar10/vae-cifar10-epoch=500-train_loss=0.00.ckpt\'
 
 
 # python main/eval/ddpm/sample_cond.py +dataset=celeba64/test \
