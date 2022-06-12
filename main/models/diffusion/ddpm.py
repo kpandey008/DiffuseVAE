@@ -83,7 +83,9 @@ class DDPM(nn.Module):
             - extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * eps
         )
 
-    def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True, cond=None, z_vae=None):
+    def get_posterior_mean_covariance(
+        self, x_t, t, clip_denoised=True, cond=None, z_vae=None
+    ):
         B = x_t.size(0)
         t_ = torch.full((x_t.size(0),), t, device=x_t.device, dtype=torch.long)
         assert t_.shape == torch.Size(
@@ -112,7 +114,12 @@ class DDPM(nn.Module):
             # for fixedlarge, we set the initial (log-)variance like so
             # to get a better decoder log likelihood.
             "fixedlarge": (
-                self.betas,
+                torch.cat(
+                    [
+                        torch.tensor([self.post_variance[1]], device=x_t.device),
+                        self.betas[1:],
+                    ]
+                ),
                 torch.log(
                     torch.cat(
                         [
@@ -132,7 +139,8 @@ class DDPM(nn.Module):
         return post_mean, post_variance, post_log_variance
 
     def sample(self, x_t, cond=None, z_vae=None, n_steps=None, checkpoints=[]):
-        # The sampling process goes here!
+        # The sampling process goes here. This sampler also supports truncated sampling.
+        # For spaced sampling (used in DDIM etc.) see SpacedDiffusion model in spaced_diff.py
         x = x_t
         B, *_ = x_t.shape
         sample_dict = {}
@@ -142,6 +150,7 @@ class DDPM(nn.Module):
 
         num_steps = self.T if n_steps is None else n_steps
         checkpoints = [num_steps] if checkpoints == [] else checkpoints
+
         for idx, t in enumerate(reversed(range(0, num_steps))):
             z = (
                 torch.randn_like(x_t)

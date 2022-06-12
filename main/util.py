@@ -11,6 +11,7 @@ from datasets import (
     CelebADataset,
     CelebAMaskHQDataset,
     CIFAR10Dataset,
+    FFHQLmdbDataset,
     ReconstructionDataset,
     ReconstructionDatasetv2,
 )
@@ -32,6 +33,23 @@ def configure_device(device):
     return device
 
 
+def space_timesteps(num_timesteps, desired_count):
+    """
+    Create a list of timesteps to use from an original diffusion process,
+    given the number of timesteps we want to take from equally-sized portions
+    of the original process.
+    :param num_timesteps: the number of diffusion steps in the original
+                          process to divide up.
+    :return: a set of diffusion steps from the original process to use.
+    """
+    for i in range(1, num_timesteps):
+        if len(range(0, num_timesteps, i)) == desired_count:
+            return range(0, num_timesteps, i)
+    raise ValueError(
+        f"cannot create exactly {desired_count} steps with an integer stride"
+    )
+
+
 def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
     assert isinstance(norm, bool)
     transform = T.Compose(
@@ -46,6 +64,8 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         dataset = CelebAMaskHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "afhq":
         dataset = AFHQDataset(root, norm=norm, transform=transform, **kwargs)
+    elif name == "ffhq":
+        dataset = FFHQLmdbDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
         dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "reconsv2":

@@ -2,6 +2,8 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from models.diffusion.ddpm_form2 import DDPMv2
+from models.diffusion.spaced_diff import SpacedDiffusion
+from util import space_timesteps
 
 
 class DDPMWrapper(pl.LightningModule):
@@ -15,6 +17,8 @@ class DDPMWrapper(pl.LightningModule):
         loss="l1",
         grad_clip_val=1.0,
         sample_from="target",
+        resample_strategy="spaced",
+        sample_method="ddpm",
         conditional=True,
         eval_mode="sample",
         pred_steps=None,
@@ -25,8 +29,9 @@ class DDPMWrapper(pl.LightningModule):
         super().__init__()
         assert loss in ["l1", "l2"]
         assert eval_mode in ["sample", "recons"]
-        self.sample_from = sample_from
-        self.conditional = conditional
+        assert resample_strategy in ["truncated", "spaced"]
+        assert sample_method in ["ddpm", "ddim"]
+
         self.z_cond = z_cond
         self.online_network = online_network
         self.target_network = target_network
@@ -39,6 +44,10 @@ class DDPMWrapper(pl.LightningModule):
         self.n_anneal_steps = n_anneal_steps
 
         # Evaluation arguments
+        self.sample_from = sample_from
+        self.conditional = conditional
+        self.sample_method = sample_method
+        self.resample_strategy = resample_strategy
         self.eval_mode = eval_mode
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
         self.pred_checkpoints = pred_checkpoints
@@ -47,11 +56,32 @@ class DDPMWrapper(pl.LightningModule):
         # Disable automatic optimization
         self.automatic_optimization = False
 
+        # Spaced Diffusion (for spaced re-sampling)
+        self.spaced_diffusion = None
+
     def forward(self, x, cond=None, z=None, n_steps=None, checkpoints=[]):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
         )
-        return sample_nw.sample(x, cond=cond, z_vae=z, n_steps=n_steps, checkpoints=checkpoints)
+        # For spaced resampling
+        if self.resample_strategy == "spaced":
+            num_steps = n_steps if n_steps is not None else self.online_network.T
+            indices = space_timesteps(sample_nw.T, num_steps)
+            if self.spaced_diffusion is None:
+                self.spaced_diffusion = SpacedDiffusion(sample_nw, indices).to(x.device)
+
+            if self.sample_method == "ddim":
+                return self.spaced_diffusion.ddim_sample(
+                    x, cond=cond, z_vae=z, checkpoints=checkpoints
+                )
+            return self.spaced_diffusion(x, cond=cond, z_vae=z, checkpoints=checkpoints)
+
+        # For truncated resampling
+        if self.sample_method == "ddim":
+            raise ValueError("DDIM is only supported for truncated sampling")
+        return sample_nw.sample(
+            x, cond=cond, z_vae=z, n_steps=n_steps, checkpoints=checkpoints
+        )
 
     def training_step(self, batch, batch_idx):
         # Optimizers
@@ -79,7 +109,9 @@ class DDPMWrapper(pl.LightningModule):
         eps = torch.randn_like(x)
 
         # Predict noise
-        eps_pred = self.online_network(x, eps, t, low_res=cond, z=z if self.z_cond else None)
+        eps_pred = self.online_network(
+            x, eps, t, low_res=cond, z=z.squeeze() if self.z_cond else None
+        )
 
         # Compute loss
         loss = self.criterion(eps, eps_pred)
@@ -129,7 +161,7 @@ class DDPMWrapper(pl.LightningModule):
             self(
                 x_t,
                 cond=recons,
-                z=z if self.z_cond else None,
+                z=z.squeeze() if self.z_cond else None,
                 n_steps=self.pred_steps,
                 checkpoints=self.pred_checkpoints,
             ),

@@ -2,8 +2,8 @@
 ddpm:
   data:
     root: ???
-    name: "cifar10"
-    image_size: 32
+    name: "ffhq"
+    image_size: 128
     hflip: True
     n_channels: 3
     norm: True
@@ -13,9 +13,9 @@ ddpm:
     dim : 128
     attn_resolutions: "16,"
     n_residual: 2
-    dim_mults: "1,2,2,2"
+    dim_mults: "1,1,2,3,4"
     dropout: 0.1
-    n_heads: 1
+    n_heads: 8
     beta1: 0.0001
     beta2: 0.02
     n_timesteps: 1000

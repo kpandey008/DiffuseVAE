@@ -96,6 +96,9 @@ def sample_cond(config):
         conditional=True,
         pred_steps=n_steps,
         eval_mode="sample",
+        resample_strategy=config_ddpm.evaluation.resample_strategy,
+        sample_method=config_ddpm.evaluation.sample_method,
+        sample_from=config_ddpm.evaluation.sample_from,
         data_norm=config_ddpm.data.norm,
         temp=config_ddpm.evaluation.temp,
         z_cond=config_ddpm.evaluation.z_cond,
@@ -106,7 +109,7 @@ def sample_cond(config):
         (n_samples, config_vae.model.z_dim, 1, 1),
         (n_samples, 3, image_size, image_size),
         share_ddpm_latent=True if ddpm_latent_path != "" else False,
-        expde_model_path=config_vae.evaluation.expde_model_path
+        expde_model_path=config_vae.evaluation.expde_model_path,
     )
 
     # Setup devices

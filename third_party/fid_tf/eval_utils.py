@@ -184,7 +184,7 @@ def load_samples_from_path(dirpath, mode="image"):
     assert os.path.isdir(dirpath)
 
     # Whitelisted extensions for either mode
-    ext_dict = {"image": ["jpg", "png", "jpeg"], "numpy": [".npy", ".npz"]}
+    ext_dict = {"image": [".jpg", ".png", ".jpeg"], "numpy": [".npy", ".npz"]}
 
     # Placeholder for all samples
     samples_list = []
