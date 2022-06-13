@@ -4,3 +4,4 @@ from .recons import ReconstructionDataset, ReconstructionDatasetv2
 from .cifar10 import CIFAR10Dataset
 from .afhq import AFHQDataset
 from .ffhq import FFHQLmdbDataset
+from .celebahq import CelebAHQDataset
