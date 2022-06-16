@@ -245,7 +245,6 @@ class SpacedDiffusion(nn.Module):
 
     def ddim_sample(self, x_t, cond=None, z_vae=None, checkpoints=[], eta=0.0):
         # The sampling process goes here!
-        print(f"Eta: {eta}")
         x = x_t
         B, *_ = x_t.shape
         sample_dict = {}

@@ -3,7 +3,7 @@
 import os
 import sys
 
-p = os.path.join(os.path.abspath("."), 'main')
+p = os.path.join(os.path.abspath("."), "main")
 sys.path.insert(1, p)
 
 import copy
@@ -75,8 +75,15 @@ def sample(config):
         config.evaluation.chkpt_path,
         online_network=online_ddpm,
         target_network=target_ddpm,
+        vae=None,
         conditional=False,
         pred_steps=n_steps,
+        eval_mode="sample",
+        resample_strategy=config.evaluation.resample_strategy,
+        sample_method=config.evaluation.sample_method,
+        sample_from=config.evaluation.sample_from,
+        data_norm=config.data.norm,
+        strict=False,
     )
 
     # Create predict dataset of latents

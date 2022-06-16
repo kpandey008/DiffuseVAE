@@ -102,6 +102,7 @@ def sample_cond(config):
         data_norm=config_ddpm.data.norm,
         temp=config_ddpm.evaluation.temp,
         z_cond=config_ddpm.evaluation.z_cond,
+        strict=True,
     )
 
     # Create predict dataset of latents

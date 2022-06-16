@@ -59,14 +59,22 @@ class DDPMWrapper(pl.LightningModule):
         # Spaced Diffusion (for spaced re-sampling)
         self.spaced_diffusion = None
 
-    def forward(self, x, cond=None, z=None, n_steps=None, checkpoints=[]):
+    def forward(
+        self,
+        x,
+        cond=None,
+        z=None,
+        n_steps=None,
+        checkpoints=[],
+        resample_type="uniform",
+    ):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
         )
         # For spaced resampling
         if self.resample_strategy == "spaced":
             num_steps = n_steps if n_steps is not None else self.online_network.T
-            indices = space_timesteps(sample_nw.T, num_steps)
+            indices = space_timesteps(sample_nw.T, num_steps, type=resample_type)
             if self.spaced_diffusion is None:
                 self.spaced_diffusion = SpacedDiffusion(sample_nw, indices).to(x.device)
 
