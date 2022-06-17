@@ -66,7 +66,7 @@ class DDPMWrapper(pl.LightningModule):
         z=None,
         n_steps=None,
         checkpoints=[],
-        resample_type="uniform",
+        resample_type="quad",
     ):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
