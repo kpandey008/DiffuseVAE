@@ -25,6 +25,7 @@ ddpm:
     save_path: ???
     z_cond: False
     z_dim: 512
+    guidance_weight: 0.0
     type: 'form1'
     resample_strategy: "spaced"
     sample_method: "ddpm"

@@ -42,6 +42,7 @@ ddpm:
     n_anneal_steps: 5000
     loss: "l2"
     chkpt_prefix: ""
+    cfd_rate: 0.0
 
 # VAE config used for VAE training
 vae:
