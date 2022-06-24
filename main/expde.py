@@ -24,7 +24,9 @@ def fit_gmm(
     z = np.load(latent_path).squeeze()
 
     # Fit a GMM model
-    gmm = GaussianMixture(n_components=n_components, random_state=0, verbose=2)
+    gmm = GaussianMixture(
+        n_components=n_components, random_state=0, verbose=2, verbose_interval=1
+    )
     gmm.fit(z)
 
     # Save the sklearn model on disk

@@ -13,7 +13,7 @@ ddpm:
     dim : 128
     attn_resolutions: "16,"
     n_residual: 2
-    dim_mults: "1,1,2,2,4,4"
+    dim_mults: "1,2,2,3,4"
     dropout: 0.0
     n_heads: 1
     beta1: 0.0001

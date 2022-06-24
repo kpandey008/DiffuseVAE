@@ -29,7 +29,8 @@ def extract(
     image_size=32,
     save_path=os.getcwd(),
 ):
-    dev, _ = configure_device(device)
+    # dev, _ = configure_device(device)
+    dev = 'cuda'
 
     # Dataset
     dataset = get_dataset(dataset_name, root, image_size, norm=False, flip=False)

@@ -84,7 +84,7 @@ class DDPM(nn.Module):
         )
 
     def get_posterior_mean_covariance(
-        self, x_t, t, clip_denoised=True, cond=None, z_vae=None
+        self, x_t, t, clip_denoised=True, cond=None, z_vae=None, guidance_weight=0.0
     ):
         B = x_t.size(0)
         t_ = torch.full((x_t.size(0),), t, device=x_t.device, dtype=torch.long)
@@ -94,10 +94,21 @@ class DDPM(nn.Module):
             ]
         )
 
+        # Compute updated score
+        if guidance_weight == 0:
+            eps_score = self.decoder(x_t, t_, low_res=cond, z=z_vae)
+        else:
+            eps_score = (1 + guidance_weight) * self.decoder(
+                x_t, t_, low_res=cond, z=z_vae
+            ) - guidance_weight * self.decoder(
+                x_t,
+                t_,
+                low_res=torch.zeros_like(cond),
+                z=torch.zeros_like(z_vae) if z_vae is not None else None,
+            )
+
         # Generate the reconstruction from x_t
-        x_recons = self._predict_xstart_from_eps(
-            x_t, t_, self.decoder(x_t, t_, low_res=cond, z=z_vae)
-        )
+        x_recons = self._predict_xstart_from_eps(x_t, t_, eps_score)
 
         # Clip
         if clip_denoised:
@@ -138,7 +149,15 @@ class DDPM(nn.Module):
         post_log_variance = extract(p_log_variance, t_, x_t.shape)
         return post_mean, post_variance, post_log_variance
 
-    def sample(self, x_t, cond=None, z_vae=None, n_steps=None, checkpoints=[]):
+    def sample(
+        self,
+        x_t,
+        cond=None,
+        z_vae=None,
+        n_steps=None,
+        guidance_weight=0.0,
+        checkpoints=[],
+    ):
         # The sampling process goes here. This sampler also supports truncated sampling.
         # For spaced sampling (used in DDIM etc.) see SpacedDiffusion model in spaced_diff.py
         x = x_t
@@ -163,10 +182,7 @@ class DDPM(nn.Module):
                 post_variance,
                 post_log_variance,
             ) = self.get_posterior_mean_covariance(
-                x,
-                t,
-                cond=cond,
-                z_vae=z_vae,
+                x, t, cond=cond, z_vae=z_vae, guidance_weight=guidance_weight
             )
             nonzero_mask = (
                 torch.tensor(t != 0, device=x.device)

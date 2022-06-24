@@ -101,6 +101,7 @@ def sample_cond(config):
         sample_from=config_ddpm.evaluation.sample_from,
         data_norm=config_ddpm.data.norm,
         temp=config_ddpm.evaluation.temp,
+        guidance_weight=config_ddpm.evaluation.guidance_weight,
         z_cond=config_ddpm.evaluation.z_cond,
         strict=True,
     )

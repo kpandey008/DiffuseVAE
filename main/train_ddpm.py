@@ -101,6 +101,7 @@ def train(config):
         target_ddpm,
         vae,
         lr=lr,
+        cfd_rate=config.training.cfd_rate,
         n_anneal_steps=config.training.n_anneal_steps,
         loss=config.training.loss,
         conditional=False if ddpm_type == "uncond" else True,

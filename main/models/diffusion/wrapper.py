@@ -13,6 +13,7 @@ class DDPMWrapper(pl.LightningModule):
         target_network,
         vae,
         lr=2e-5,
+        cfd_rate=0.0,
         n_anneal_steps=0,
         loss="l1",
         grad_clip_val=1.0,
@@ -24,6 +25,7 @@ class DDPMWrapper(pl.LightningModule):
         pred_steps=None,
         pred_checkpoints=[],
         temp=1.0,
+        guidance_weight=0.0,
         z_cond=False,
     ):
         super().__init__()
@@ -36,6 +38,7 @@ class DDPMWrapper(pl.LightningModule):
         self.online_network = online_network
         self.target_network = target_network
         self.vae = vae
+        self.cfd_rate = cfd_rate
 
         # Training arguments
         self.criterion = nn.MSELoss(reduction="mean") if loss == "l2" else nn.L1Loss()
@@ -52,6 +55,7 @@ class DDPMWrapper(pl.LightningModule):
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
         self.pred_checkpoints = pred_checkpoints
         self.temp = temp
+        self.guidance_weight = guidance_weight
 
         # Disable automatic optimization
         self.automatic_optimization = False
@@ -80,15 +84,30 @@ class DDPMWrapper(pl.LightningModule):
 
             if self.sample_method == "ddim":
                 return self.spaced_diffusion.ddim_sample(
-                    x, cond=cond, z_vae=z, checkpoints=checkpoints
+                    x,
+                    cond=cond,
+                    z_vae=z,
+                    guidance_weight=self.guidance_weight,
+                    checkpoints=checkpoints,
                 )
-            return self.spaced_diffusion(x, cond=cond, z_vae=z, checkpoints=checkpoints)
+            return self.spaced_diffusion(
+                x,
+                cond=cond,
+                z_vae=z,
+                guidance_weight=self.guidance_weight,
+                checkpoints=checkpoints,
+            )
 
         # For truncated resampling
         if self.sample_method == "ddim":
             raise ValueError("DDIM is only supported for spaced sampling")
         return sample_nw.sample(
-            x, cond=cond, z_vae=z, n_steps=n_steps, checkpoints=checkpoints
+            x,
+            cond=cond,
+            z_vae=z,
+            n_steps=n_steps,
+            guidance_weight=self.guidance_weight,
+            checkpoints=checkpoints,
         )
 
     def training_step(self, batch, batch_idx):
@@ -105,6 +124,11 @@ class DDPMWrapper(pl.LightningModule):
                 z = self.vae.reparameterize(mu, logvar)
                 cond = self.vae.decode(z)
                 cond = 2 * cond - 1
+
+            # Set the conditioning signal based on clf-free guidance rate
+            if torch.rand(1)[0] < self.cfd_rate:
+                cond = torch.zeros_like(x)
+                z = torch.zeros_like(z)
         else:
             x = batch
 
@@ -139,6 +163,10 @@ class DDPMWrapper(pl.LightningModule):
 
     def predict_step(self, batch, batch_idx, dataloader_idx=None):
         if not self.conditional:
+            if self.guidance_weight != 0.0:
+                raise ValueError(
+                    "Guidance weight cannot be zero when using unconditional DDPM"
+                )
             x_t = batch
             return self(
                 x_t,
