@@ -68,3 +68,37 @@ class FFHQLmdbDataset(Dataset):
 
     def __len__(self):
         return self.length
+
+
+class FFHQDataset(Dataset):
+    def __init__(
+        self,
+        root,
+        norm=True,
+        transform=None,
+    ):
+        self.root = root
+        self.transform = transform
+        self.norm = norm
+
+        self.images = [
+            os.path.join(root, img)
+            for img in os.listdir(self.root)
+            if img.endswith(".png")
+        ]
+
+    def __getitem__(self, index):
+        img = Image.open(self.images[index])
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if self.norm:
+            img = (np.asarray(img).astype(np.float) / 127.5) - 1.0
+        else:
+            img = np.asarray(img).astype(np.float) / 255.0
+
+        return torch.from_numpy(img).permute(2, 0, 1).float()
+
+    def __len__(self):
+        return self.length

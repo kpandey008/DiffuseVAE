@@ -11,7 +11,7 @@ from datasets import (
     CelebADataset,
     CelebAMaskHQDataset,
     CIFAR10Dataset,
-    FFHQLmdbDataset,
+    FFHQDataset,
     CelebAHQDataset,
     ReconstructionDataset,
     ReconstructionDatasetv2,
@@ -76,7 +76,7 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
     elif name == "afhq":
         dataset = AFHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "ffhq":
-        dataset = FFHQLmdbDataset(root, norm=norm, transform=transform, **kwargs)
+        dataset = FFHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
         dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "reconsv2":
