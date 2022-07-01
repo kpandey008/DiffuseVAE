@@ -101,4 +101,4 @@ class FFHQDataset(Dataset):
         return torch.from_numpy(img).permute(2, 0, 1).float()
 
     def __len__(self):
-        return self.length
+        return len(self.images)
