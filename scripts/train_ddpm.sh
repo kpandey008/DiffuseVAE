@@ -45,8 +45,8 @@ python main/train_ddpm.py +dataset=celeba64/train \
                      dataset.ddpm.training.vae_chkpt_path=\'/data1/kushagrap20/checkpoints/celeba64/vae_celeba64_alpha=1.0/checkpoints/vae-celeba64_alpha=1.0-epoch=245-train_loss=0.0000.ckpt\' \
                      dataset.ddpm.training.device=\'gpu:0,1,2,3\' \
                      dataset.ddpm.training.results_dir=\'/data1/kushagrap20/diffusevae_celeba64_rework_form1__21stJune_sota_nheads=8_dropout=0.1/\' \
-                     dataset.ddpm.training.restore_path=\'/data1/kushagrap20/diffusevae_celeba64_rework_form1__21stJune_sota_nheads=8_dropout=0.1/checkpoints/ddpmv2-celeba64_rework_form1__21stJune_sota_nheads=8_dropout=0.1-epoch=336-loss=0.0240.ckpt\' \
-                     dataset.ddpm.training.workers=2 \
+                     dataset.ddpm.training.restore_path=\'/data1/kushagrap20/diffusevae_celeba64_rework_form1__21stJune_sota_nheads=8_dropout=0.1/checkpoints/ddpmv2-celeba64_rework_form1__21stJune_sota_nheads=8_dropout=0.1-epoch=427-loss=0.0145.ckpt\' \
+                     dataset.ddpm.training.workers=1 \
                      dataset.ddpm.training.chkpt_prefix=\'celeba64_rework_form1__21stJune_sota_nheads=8_dropout=0.1\'
 
 # # CIFAR-10 training

@@ -3,29 +3,28 @@
 #                      dataset.vae.data.root='/data1/kushagrap20/datasets/CelebAMask-HQ/' \
 #                      dataset.vae.data.name='celebamaskhq' \
 #                      dataset.vae.data.hflip=True \
-#                      dataset.vae.training.batch_size=32 \
+#                      dataset.vae.training.batch_size=42 \
 #                      dataset.vae.training.log_step=50 \
-#                      dataset.vae.training.epochs=1500 \
-#                      dataset.vae.training.device=\'gpu:0,1,2,3\' \
+#                      dataset.vae.training.epochs=500 \
+#                      dataset.vae.training.device=\'gpu:0,1,3\' \
 #                      dataset.vae.training.results_dir=\'/data1/kushagrap20/vae_cmhq128_alpha=1.0/\' \
-#                      dataset.vae.training.restore_path=\'/data1/kushagrap20/vae_cmhq128_alpha=1.0/checkpoints/vae-cmhq128_alpha=1.0-epoch=04-train_loss=0.0000.ckpt\' \
 #                      dataset.vae.training.workers=2 \
 #                      dataset.vae.training.chkpt_prefix=\'cmhq128_alpha=1.0\' \
 #                      dataset.vae.training.alpha=1.0
 
 # FFHQ 128 training
-python main/train_ae.py +dataset=celebamaskhq128/train \
-                     dataset.vae.data.root='/data1/kushagrap20/datasets/ffhq/' \
-                     dataset.vae.data.name='ffhq' \
-                     dataset.vae.data.hflip=True \
-                     dataset.vae.training.batch_size=32 \
-                     dataset.vae.training.log_step=50 \
-                     dataset.vae.training.epochs=1500 \
-                     dataset.vae.training.device=\'gpu:0,1,2,3\' \
-                     dataset.vae.training.results_dir=\'/data1/kushagrap20/vae_ffhq128_11thJune_alpha=1.0/\' \
-                     dataset.vae.training.workers=2 \
-                     dataset.vae.training.chkpt_prefix=\'ffhq128_11thJune_alpha=1.0\' \
-                     dataset.vae.training.alpha=1.0
+# python main/train_ae.py +dataset=ffhq/train \
+#                      dataset.vae.data.root='/data1/kushagrap20/datasets/ffhq/' \
+#                      dataset.vae.data.name='ffhq' \
+#                      dataset.vae.data.hflip=True \
+#                      dataset.vae.training.batch_size=32 \
+#                      dataset.vae.training.log_step=50 \
+#                      dataset.vae.training.epochs=1500 \
+#                      dataset.vae.training.device=\'gpu:0,1,2,3\' \
+#                      dataset.vae.training.results_dir=\'/data1/kushagrap20/vae_ffhq128_11thJune_alpha=1.0/\' \
+#                      dataset.vae.training.workers=2 \
+#                      dataset.vae.training.chkpt_prefix=\'ffhq128_11thJune_alpha=1.0\' \
+#                      dataset.vae.training.alpha=1.0
 
 # AFHQ training
 # python main/train_ae.py +dataset=afhq128/train \

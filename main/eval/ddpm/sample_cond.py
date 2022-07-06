@@ -112,6 +112,7 @@ def sample_cond(config):
         (n_samples, 3, image_size, image_size),
         share_ddpm_latent=True if ddpm_latent_path != "" else False,
         expde_model_path=config_vae.evaluation.expde_model_path,
+        seed=config_ddpm.evaluation.seed,
     )
 
     # Setup devices

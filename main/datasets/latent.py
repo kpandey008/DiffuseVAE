@@ -4,7 +4,14 @@ from joblib import load
 
 
 class LatentDataset(Dataset):
-    def __init__(self, z_vae_size, z_ddpm_size, share_ddpm_latent=False, expde_model_path=None, **kwargs):
+    def __init__(
+        self,
+        z_vae_size,
+        z_ddpm_size,
+        share_ddpm_latent=False,
+        expde_model_path=None,
+        **kwargs
+    ):
         # NOTE: The batch index must be included in the latent code size input
         n_samples, *dims = z_ddpm_size
 
@@ -13,9 +20,12 @@ class LatentDataset(Dataset):
 
         # Load the Ex-PDE model and sample z_vae from it instead!
         if expde_model_path is not None and expde_model_path != "":
-            print('Found an Ex-PDE model. Will sample z_vae from it instead!')
+            print("Found an Ex-PDE model. Will sample z_vae from it instead!")
             gmm = load(expde_model_path)
-            self.z_vae = torch.from_numpy(gmm.sample(n_samples)[0]).view(z_vae_size).float()
+            gmm.set_params(random_state=kwargs.get("seed", 0))
+            self.z_vae = (
+                torch.from_numpy(gmm.sample(n_samples)[0]).view(z_vae_size).float()
+            )
             assert self.z_vae.size() == z_vae_size
 
         if self.share_ddpm_latent:
