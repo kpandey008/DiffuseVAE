@@ -7,9 +7,9 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 
-class AFHQDataset(Dataset):
+class AFHQv2Dataset(Dataset):
     def __init__(self, root, norm=True, subsample_size=None, transform=None, **kwargs):
-        # We only train on the AFHQ train set (around 14630 images)
+        # We only train on the AFHQ train set
         if not os.path.isdir(root):
             raise ValueError(f"The specified root: {root} does not exist")
         self.root = root
@@ -18,7 +18,7 @@ class AFHQDataset(Dataset):
 
         self.images = []
 
-        subfolder_list = ['dog', 'cat', 'wild']
+        subfolder_list = ["dog", "cat", "wild"]
         base_path = os.path.join(self.root, "train")
         for subfolder in subfolder_list:
             sub_path = os.path.join(base_path, subfolder)
@@ -52,6 +52,6 @@ class AFHQDataset(Dataset):
 
 
 if __name__ == "__main__":
-    root = "/data1/kushagrap20/datasets/afhq"
-    dataset = AFHQDataset(root, subsample_size=None)
+    root = "/data1/kushagrap20/datasets/afhq_v2/"
+    dataset = AFHQv2Dataset(root)
     print(len(dataset))

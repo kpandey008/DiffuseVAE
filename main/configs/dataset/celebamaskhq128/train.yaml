@@ -51,7 +51,7 @@ vae:
     name: "celebamaskhq"
     image_size: 128
     n_channels: 3
-    hflip: False
+    hflip: True
 
   model:
     enc_block_config : "128x1,128d2,128t64,64x3,64d2,64t32,32x3,32d2,32t16,16x7,16d2,16t8,8x3,8d2,8t4,4x3,4d4,4t1,1x2"

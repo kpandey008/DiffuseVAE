@@ -7,7 +7,7 @@ import torchvision.transforms as T
 from PIL import Image
 
 from datasets import (
-    AFHQDataset,
+    AFHQv2Dataset,
     CelebADataset,
     CelebAMaskHQDataset,
     CIFAR10Dataset,
@@ -74,7 +74,7 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
     elif name == "celebahq":
         dataset = CelebAHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "afhq":
-        dataset = AFHQDataset(root, norm=norm, transform=transform, **kwargs)
+        dataset = AFHQv2Dataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "ffhq":
         dataset = FFHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "recons":
