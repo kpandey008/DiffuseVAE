@@ -86,8 +86,6 @@ def sample_cond(config):
         ddpm_latents=ddpm_latents,
     )
 
-    # NOTE: Using strict=False since the VAE model is not included
-    # in the pretrained DDPM state_dict
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         config_ddpm.evaluation.chkpt_path,
         online_network=online_ddpm,
@@ -97,6 +95,7 @@ def sample_cond(config):
         pred_steps=n_steps,
         eval_mode="sample",
         resample_strategy=config_ddpm.evaluation.resample_strategy,
+        skip_strategy=config_ddpm.evaluation.skip_strategy,
         sample_method=config_ddpm.evaluation.sample_method,
         sample_from=config_ddpm.evaluation.sample_from,
         data_norm=config_ddpm.data.norm,

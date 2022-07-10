@@ -28,6 +28,7 @@ ddpm:
     guidance_weight: 0.0
     type: 'form1'
     resample_strategy: "spaced"
+    skip_strategy: "uniform"
     sample_method: "ddpm"
     sample_from: "target"
     seed: 0

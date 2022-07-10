@@ -1,8 +1,9 @@
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from models.diffusion.ddpm_form2 import DDPMv2
 from models.diffusion.spaced_diff import SpacedDiffusion
+from models.diffusion.spaced_diff_form2 import SpacedDiffusionForm2
+from models.diffusion.ddpm_form2 import DDPMv2
 from util import space_timesteps
 
 
@@ -19,6 +20,7 @@ class DDPMWrapper(pl.LightningModule):
         grad_clip_val=1.0,
         sample_from="target",
         resample_strategy="spaced",
+        skip_strategy="uniform",
         sample_method="ddpm",
         conditional=True,
         eval_mode="sample",
@@ -33,6 +35,7 @@ class DDPMWrapper(pl.LightningModule):
         assert eval_mode in ["sample", "recons"]
         assert resample_strategy in ["truncated", "spaced"]
         assert sample_method in ["ddpm", "ddim"]
+        assert skip_strategy in ["uniform", "quad"]
 
         self.z_cond = z_cond
         self.online_network = online_network
@@ -51,6 +54,7 @@ class DDPMWrapper(pl.LightningModule):
         self.conditional = conditional
         self.sample_method = sample_method
         self.resample_strategy = resample_strategy
+        self.skip_strategy = skip_strategy
         self.eval_mode = eval_mode
         self.pred_steps = self.online_network.T if pred_steps is None else pred_steps
         self.pred_checkpoints = pred_checkpoints
@@ -70,17 +74,21 @@ class DDPMWrapper(pl.LightningModule):
         z=None,
         n_steps=None,
         checkpoints=[],
-        resample_type="quad",
     ):
         sample_nw = (
             self.target_network if self.sample_from == "target" else self.online_network
         )
+        spaced_nw = (
+            SpacedDiffusionForm2
+            if isinstance(self.online_network, DDPMv2)
+            else SpacedDiffusion
+        )
         # For spaced resampling
         if self.resample_strategy == "spaced":
             num_steps = n_steps if n_steps is not None else self.online_network.T
-            indices = space_timesteps(sample_nw.T, num_steps, type=resample_type)
+            indices = space_timesteps(sample_nw.T, num_steps, type=self.skip_strategy)
             if self.spaced_diffusion is None:
-                self.spaced_diffusion = SpacedDiffusion(sample_nw, indices).to(x.device)
+                self.spaced_diffusion = spaced_nw(sample_nw, indices).to(x.device)
 
             if self.sample_method == "ddim":
                 return self.spaced_diffusion.ddim_sample(
@@ -165,7 +173,7 @@ class DDPMWrapper(pl.LightningModule):
         if not self.conditional:
             if self.guidance_weight != 0.0:
                 raise ValueError(
-                    "Guidance weight cannot be zero when using unconditional DDPM"
+                    "Guidance weight cannot be non-zero when using unconditional DDPM"
                 )
             x_t = batch
             return self(

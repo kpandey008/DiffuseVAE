@@ -191,6 +191,8 @@ class DDPMv2(nn.Module):
                 x,
                 t,
                 cond=cond,
+                z_vae=z_vae,
+                guidance_weight=guidance_weight,
             )
             nonzero_mask = (
                 torch.tensor(t != 0, device=x.device)
