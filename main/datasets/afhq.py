@@ -18,7 +18,7 @@ class AFHQv2Dataset(Dataset):
 
         self.images = []
 
-        subfolder_list = ["dog", "cat", "wild"]
+        subfolder_list = ["dog"]
         base_path = os.path.join(self.root, "train")
         for subfolder in subfolder_list:
             sub_path = os.path.join(base_path, subfolder)

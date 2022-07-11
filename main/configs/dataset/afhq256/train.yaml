@@ -35,8 +35,9 @@ ddpm:
     optimizer: "Adam"
     lr: 2e-5
     restore_path: ""
+    vae_chkpt_path: ???
     results_dir: ???
-    workers: 16
+    workers: 2
     grad_clip: 1.0
     n_anneal_steps: 5000
     loss: "l2"

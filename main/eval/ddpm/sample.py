@@ -80,6 +80,7 @@ def sample(config):
         pred_steps=n_steps,
         eval_mode="sample",
         resample_strategy=config.evaluation.resample_strategy,
+        skip_strategy=config.evaluation.skip_strategy,
         sample_method=config.evaluation.sample_method,
         sample_from=config.evaluation.sample_from,
         data_norm=config.data.norm,
