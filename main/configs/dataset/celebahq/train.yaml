@@ -20,7 +20,6 @@ ddpm:
 
   training:
     seed: 0
-    vae_chkpt_path: ???
     fp16: False
     use_ema: True
     z_cond: False
@@ -35,12 +34,14 @@ ddpm:
     optimizer: "Adam"
     lr: 2e-5
     restore_path: ""
+    vae_chkpt_path: ???
     results_dir: ???
-    workers: 16
+    workers: 2
     grad_clip: 1.0
     n_anneal_steps: 5000
     loss: "l2"
     chkpt_prefix: ""
+    cfd_rate: 0.0
 
 # VAE config used for VAE training
 vae:
