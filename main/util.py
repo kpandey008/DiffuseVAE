@@ -112,7 +112,11 @@ def plot_interpolations(interpolations, save_path=None, figsize=(10, 5)):
 
 
 def compare_interpolations(
-    interpolations_1, interpolations_2, save_path=None, figsize=(10, 2)
+    interpolations_1,
+    interpolations_2,
+    save_path=None,
+    figsize=(10, 2),
+    denorm=True,
 ):
     assert len(interpolations_1) == len(interpolations_2)
     N = len(interpolations_1)
@@ -120,6 +124,11 @@ def compare_interpolations(
     fig, ax = plt.subplots(nrows=2, ncols=N, figsize=figsize)
 
     for i, (inter_1, inter_2) in enumerate(zip(interpolations_1, interpolations_2)):
+        # De-Norm
+        inter_1 = 0.5 * inter_1 + 0.5 if denorm else inter_1
+        # inter_2 = 0.5 * inter_2 + 0.5 if denorm else inter_2
+
+        # Plot
         ax[0, i].imshow(inter_1.squeeze().permute(1, 2, 0))
         ax[0, i].axis("off")
 
@@ -127,7 +136,7 @@ def compare_interpolations(
         ax[1, i].axis("off")
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=300, pad_inches=0)
+        plt.savefig(save_path, dpi=100, pad_inches=0)
 
 
 def convert_to_np(obj):

@@ -25,8 +25,10 @@ ddpm:
     save_path: ???
     z_cond: False
     z_dim: 512
+    guidance_weight: 0.0
     type: 'form1'
     resample_strategy: "spaced"
+    skip_strategy: "uniform"
     sample_method: "ddpm"
     sample_from: "target"
     seed: 0
@@ -62,6 +64,7 @@ vae:
   evaluation:
     chkpt_path: ???
     save_path: ???
+    expde_model_path: ""
     seed: 0
     device: "gpu:0"
     workers: 2

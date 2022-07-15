@@ -29,6 +29,7 @@ class DDPMWrapper(pl.LightningModule):
         temp=1.0,
         guidance_weight=0.0,
         z_cond=False,
+        ddpm_latents=None,
     ):
         super().__init__()
         assert loss in ["l1", "l2"]
@@ -60,6 +61,7 @@ class DDPMWrapper(pl.LightningModule):
         self.pred_checkpoints = pred_checkpoints
         self.temp = temp
         self.guidance_weight = guidance_weight
+        self.ddpm_latents = ddpm_latents
 
         # Disable automatic optimization
         self.automatic_optimization = False
@@ -73,6 +75,7 @@ class DDPMWrapper(pl.LightningModule):
         cond=None,
         z=None,
         n_steps=None,
+        ddpm_latents=None,
         checkpoints=[],
     ):
         sample_nw = (
@@ -104,6 +107,7 @@ class DDPMWrapper(pl.LightningModule):
                 z_vae=z,
                 guidance_weight=self.guidance_weight,
                 checkpoints=checkpoints,
+                ddpm_latents=ddpm_latents,
             )
 
         # For truncated resampling
@@ -116,6 +120,7 @@ class DDPMWrapper(pl.LightningModule):
             n_steps=n_steps,
             guidance_weight=self.guidance_weight,
             checkpoints=checkpoints,
+            ddpm_latents=ddpm_latents,
         )
 
     def training_step(self, batch, batch_idx):
@@ -182,6 +187,7 @@ class DDPMWrapper(pl.LightningModule):
                 z=None,
                 n_steps=self.pred_steps,
                 checkpoints=self.pred_checkpoints,
+                ddpm_latents=None,
             )
 
         if self.eval_mode == "sample":
@@ -208,6 +214,7 @@ class DDPMWrapper(pl.LightningModule):
                 z=z.squeeze() if self.z_cond else None,
                 n_steps=self.pred_steps,
                 checkpoints=self.pred_checkpoints,
+                ddpm_latents=self.ddpm_latents,
             ),
             recons,
         )

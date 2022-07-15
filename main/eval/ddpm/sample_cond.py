@@ -75,7 +75,6 @@ def sample_cond(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
-        ddpm_latents=ddpm_latents,
     )
     target_ddpm = ddpm_cls(
         ema_decoder,
@@ -83,7 +82,6 @@ def sample_cond(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
-        ddpm_latents=ddpm_latents,
     )
 
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
@@ -103,6 +101,7 @@ def sample_cond(config):
         guidance_weight=config_ddpm.evaluation.guidance_weight,
         z_cond=config_ddpm.evaluation.z_cond,
         strict=True,
+        ddpm_latents=ddpm_latents,
     )
 
     # Create predict dataset of latents
