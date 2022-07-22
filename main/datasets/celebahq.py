@@ -28,8 +28,6 @@ class CelebAHQDataset(Dataset):
 
         # Subsample the dataset (if enabled)
         if subsample_size is not None:
-            # To enable deterministic samples set a random seed at
-            # a global level
             self.images = self.images[:subsample_size]
 
     def __getitem__(self, idx):

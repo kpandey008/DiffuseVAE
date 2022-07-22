@@ -196,16 +196,24 @@ class DDPMWrapper(pl.LightningModule):
 
             # Initial temperature scaling
             x_t = x_t * self.temp
+
+            # Formulation-2 initial latent
+            if isinstance(self.online_network, DDPMv2):
+                x_t = recons + self.temp * torch.randn_like(recons)
         else:
-            (recons, _), x_t = batch
-            x_t = self.temp * x_t[0]  # This is really a one element tuple
+            img = batch
+            recons = self.vae.forward_recons(img * 0.5 + 0.5)
+            # DDPM encoder
+            x_t = self.online_network.compute_noisy_input(
+                img,
+                torch.randn_like(img),
+                torch.tensor(
+                    [self.online_network.T - 1] * img.size(0), device=img.device
+                ),
+            )
 
         # Normalize
         recons = 2 * recons - 1
-
-        # Formulation-2 initial latent
-        if isinstance(self.online_network, DDPMv2):
-            x_t = recons + self.temp * torch.randn_like(recons)
 
         return (
             self(

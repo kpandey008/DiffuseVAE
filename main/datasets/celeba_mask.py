@@ -25,11 +25,7 @@ class CelebAMaskHQDataset(Dataset):
 
         # Subsample the dataset (if enabled)
         if subsample_size is not None:
-            # To enable deterministic samples set a random seed at
-            # a global level
-            self.images = np.random.choice(
-                self.images, size=subsample_size, replace=False
-            )
+            self.images = self.images[:subsample_size]
 
     def __getitem__(self, idx):
         img_path = self.images[idx]

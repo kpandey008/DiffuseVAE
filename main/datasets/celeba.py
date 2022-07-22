@@ -11,14 +11,7 @@ from tqdm import tqdm
 # A very simplistic implementation of the CelebA dataset supporting only images and no annotations
 # TODO: Add functionality to download CelebA and setup the dataset automatically
 class CelebADataset(Dataset):
-    def __init__(
-        self,
-        root,
-        norm=True,
-        subsample_size=None,
-        transform=None,
-        **kwargs
-    ):
+    def __init__(self, root, norm=True, subsample_size=None, transform=None, **kwargs):
         if not os.path.isdir(root):
             raise ValueError(f"The specified root: {root} does not exist")
         self.root = root
@@ -32,11 +25,7 @@ class CelebADataset(Dataset):
 
         # Subsample the dataset (if enabled)
         if subsample_size is not None:
-            # To enable deterministic samples set a random seed at
-            # a global level
-            self.images = np.random.choice(
-                self.images, size=subsample_size, replace=False
-            )
+            self.images = self.images[:subsample_size]
 
     def __getitem__(self, idx):
         img_path = self.images[idx]
