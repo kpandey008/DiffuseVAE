@@ -193,6 +193,7 @@ class DDPMWrapper(pl.LightningModule):
         if self.eval_mode == "sample":
             x_t, z = batch
             recons = self.vae(z)
+            recons = 2 * recons - 1
 
             # Initial temperature scaling
             x_t = x_t * self.temp
@@ -203,6 +204,8 @@ class DDPMWrapper(pl.LightningModule):
         else:
             img = batch
             recons = self.vae.forward_recons(img * 0.5 + 0.5)
+            recons = 2 * recons - 1
+
             # DDPM encoder
             x_t = self.online_network.compute_noisy_input(
                 img,
@@ -211,9 +214,6 @@ class DDPMWrapper(pl.LightningModule):
                     [self.online_network.T - 1] * img.size(0), device=img.device
                 ),
             )
-
-        # Normalize
-        recons = 2 * recons - 1
 
         return (
             self(

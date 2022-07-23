@@ -20,7 +20,6 @@ class SpacedDiffusionForm2(nn.Module):
         self,
         base_diffusion,
         use_timesteps,
-        ddpm_latents=None,
     ):
         super().__init__()
         self.base_diffusion = base_diffusion
@@ -28,7 +27,6 @@ class SpacedDiffusionForm2(nn.Module):
         self.timestep_map = []
         self.original_num_steps = self.base_diffusion.T
         self.decoder = self.base_diffusion.decoder
-        self.ddpm_latents = ddpm_latents
         self.var_type = self.base_diffusion.var_type
 
         last_alpha_cumprod = 1.0
@@ -177,22 +175,30 @@ class SpacedDiffusionForm2(nn.Module):
         post_log_variance = extract(p_log_variance, t_, x_t.shape)
         return post_mean, post_variance, post_log_variance, x_recons, eps
 
-    def forward(self, x_t, cond=None, z_vae=None, guidance_weight=0.0, checkpoints=[]):
+    def forward(
+        self,
+        x_t,
+        cond=None,
+        z_vae=None,
+        guidance_weight=0.0,
+        checkpoints=[],
+        ddpm_latents=None,
+    ):
         # The sampling process goes here!
         x = x_t
         B, *_ = x_t.shape
         sample_dict = {}
 
-        if self.ddpm_latents is not None:
-            self.ddpm_latents = self.ddpm_latents.to(x_t.device)
+        if ddpm_latents is not None:
+            ddpm_latents = ddpm_latents.to(x_t.device)
 
         num_steps = len(self.timestep_map)
         checkpoints = [num_steps] if checkpoints == [] else checkpoints
         for idx, t in enumerate(reversed(range(0, num_steps))):
             z = (
                 torch.randn_like(x_t)
-                if self.ddpm_latents is None
-                else torch.stack([self.ddpm_latents[idx]] * B)
+                if ddpm_latents is None
+                else torch.stack([ddpm_latents[idx]] * B)
             )
             assert z.shape == x_t.shape
             (
@@ -281,7 +287,8 @@ class SpacedDiffusionForm2(nn.Module):
         x_hat = 0 if cond is None else cond
         mean_pred = (
             x_recons * torch.sqrt(alpha_bar_prev)
-            + torch.sqrt(1 - alpha_bar_prev - sigma ** 2) * eps
+            + torch.sqrt(1 - alpha_bar_prev - sigma ** 2)
+            * (eps + x_hat / torch.sqrt(1 - alpha_bar))
             + coeff * x_hat
         )
         return mean_pred, sigma
@@ -297,11 +304,7 @@ class SpacedDiffusionForm2(nn.Module):
         num_steps = len(self.timestep_map)
         checkpoints = [num_steps] if checkpoints == [] else checkpoints
         for idx, t in enumerate(reversed(range(0, num_steps))):
-            z = (
-                torch.randn_like(x_t)
-                if self.ddpm_latents is None
-                else torch.stack([self.ddpm_latents[idx]] * B)
-            )
+            z = torch.randn_like(x_t)
             assert z.shape == x_t.shape
             (post_mean, post_variance,) = self.get_ddim_mean_cov(
                 x,
