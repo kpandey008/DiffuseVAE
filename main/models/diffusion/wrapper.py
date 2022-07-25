@@ -215,6 +215,9 @@ class DDPMWrapper(pl.LightningModule):
                 ),
             )
 
+            if isinstance(self.online_network, DDPMv2):
+                x_t += recons
+
         return (
             self(
                 x_t,
