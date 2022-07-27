@@ -16,7 +16,6 @@ class DDPMv2(nn.Module):
         beta_2=0.02,
         T=1000,
         var_type="fixedlarge",
-        ddpm_latents=None,
     ):
         super().__init__()
         self.decoder = decoder
@@ -24,7 +23,6 @@ class DDPMv2(nn.Module):
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.var_type = var_type
-        self.ddpm_latents = ddpm_latents
 
         # Main constants
         self.register_buffer(
@@ -165,6 +163,7 @@ class DDPMv2(nn.Module):
         n_steps=None,
         guidance_weight=0.0,
         checkpoints=[],
+        ddpm_latents=None,
     ):
         # The sampling process goes here. This sampler also supports truncated sampling.
         # For spaced sampling (used in DDIM etc.) see SpacedDiffusion model in spaced_diff.py
@@ -172,16 +171,16 @@ class DDPMv2(nn.Module):
         B, *_ = x_t.shape
         sample_dict = {}
 
-        if self.ddpm_latents is not None:
-            self.ddpm_latents = self.ddpm_latents.to(x_t.device)
+        if ddpm_latents is not None:
+            ddpm_latents = ddpm_latents.to(x_t.device)
 
         num_steps = self.T if n_steps is None else n_steps
         checkpoints = [num_steps] if checkpoints == [] else checkpoints
         for idx, t in enumerate(reversed(range(0, num_steps))):
             z = (
                 torch.randn_like(x_t)
-                if self.ddpm_latents is None
-                else torch.stack([self.ddpm_latents[idx]] * B)
+                if ddpm_latents is None
+                else torch.stack([ddpm_latents[idx]] * B)
             )
             (
                 post_mean,
