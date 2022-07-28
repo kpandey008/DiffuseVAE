@@ -7,7 +7,7 @@ This repo contains the official implementation of the paper: [DiffuseVAE: Effici
 
  DiffuseVAE is a novel generative framework that integrates a standard VAE within a diffusion model by conditioning the diffusion model samples on the VAE generated reconstructions. The resulting model can significantly improve upon the blurry samples generated from a standard VAE while at the same time equipping diffusion models with the low-dimensional VAE inferred latent code which can be used for downstream tasks like controllable synthesis and image attribute manipulation. In short, DiffuseVAE presents a generative model which combines the benefits of both VAEs and Diffusion models.
 
-![architecture!](./assets/architecture.png)
+![architecture!](./assets/method.png)
 
 Our core contributions are as follows:
 
@@ -15,13 +15,13 @@ Our core contributions are as follows:
 
 1. **Controllable synthesis** from a low-dimensional latent using diffusion models.
 
-1. **Sampling speedups**: We show that DiffuseVAE inherently requires fewer reverse diffusion sampling steps during inference compared to the unconditional DDPM model. Furthermore we also present a DiffuseVAE formulation conditioned on continuous noise as proposed in WaveGrad and show that we can generate plausible image samples in as few as **10** reverse sampling steps.
+1. **Better speed vs quality tradeoffs**: We show that DiffuseVAE inherently provides a better speed vs quality tradeoff as compared to standard DDPM/DDIM models on several image benchmarks
 
-1. **State-of-the-art synthesis**:  DiffuseVAE achieves a FID score of **8.72** on CIFAR-10 and **4.76** on CelebA-64, thus outperforming (Hierarchical) VAE-based methods.
+1. **State-of-the-art synthesis**:  We show that DiffuseVAE exhibits synthesis quality comparable to recent state-of-the-art on standard image synthesis benchmarks like CIFAR-10, CelebA-64 and CelebA-HQ while maintaining access to a low-dimensional latent code representation.
 
-1. **Generalization to Downstream tasks**: DiffuseVAE exhibits out-of-the-box generalization to downstream tasks like image super-resolution and denoising.
+1. **Generalization to noisy conditioning signals**: We show that a pre-trained DiffuseVAE model exhibits generalization to different noise types in the DDPM conditioning signal exhibiting the effectiveness of our conditioning framework.
 
-![High res samples!](./assets/highres.png)
+![High res samples!](./assets/diffusevae_tmlr-main.png)
 
 ---
 
@@ -37,70 +37,33 @@ We use `pipenv` for a project-level dependency management. Simply [install](http
 pipenv install
 ```
 
-## Training
+## Config Management
+We manage `train` and `test` configurations separately for each benchmark/dataset used in this work. All configs are present in the `main/configs` directory. This directory has subfolders named according to the dataset. Each dataset subfolder contains the training and evaluation configs as `train.yaml` and `test.yaml`. 
 
-A sample command to train DiffuseVAE is as follows:
-```
-python main/train_ddpm.py +dataset=celeba64/train \
-                     dataset.ddpm.data.root='/path/to/celeba64/reconstructions/dir/' \
-                     dataset.ddpm.data.name='recons' \
-                     dataset.ddpm.data.hflip=True \
-                     dataset.ddpm.data.norm=True \
-                     dataset.ddpm.training.type='form1' \
-                     dataset.ddpm.training.batch_size=32 \
-                     dataset.ddpm.training.device=\'gpu:1\' \
-                     dataset.ddpm.training.results_dir=\'/data1/kushagrap20/celeba64_10thJan_form1\' \
-                     dataset.ddpm.training.workers=2 \
-                     dataset.ddpm.training.chkpt_prefix='celeba64_10thJan_form1'
-```
-For training the noise-conditioned version of DiffuseVAE, simply switch to the `vaedm-noise-cond` branch using `git checkout vaedm-noise-cond` and run the same command as above.
+**Note**: The configuration files consists of many command line options. The meaning of each of these options is explained in the config for CIFAR-10.
+
+## Training
+Please refer to the scripts provided in the table corresponding to some training tasks possible using the code.
+
+|          **Task**          	|      **Reference**      	|
+|:--------------------------:	|:-----------------------:	|
+|  Training First stage VAE  	|  `scripts/train_ae.sh`  	|
+| Training Second stage DDPM 	| `scripts/train_ddpm.sh` 	|
 
 ## Inference
 
-A sample command to perform sample generation using a pretrained DiffuseVAE model is as follows:
-```
-python main/eval/ddpm/sample_cond.py +dataset=celebamaskhq128/test \
-                        dataset.ddpm.data.norm=True \
-                        dataset.ddpm.evaluation.seed=0 \
-                        dataset.ddpm.evaluation.sample_prefix='gpu_0' \
-                        dataset.ddpm.evaluation.device=\'gpu:0\' \
-                        dataset.ddpm.evaluation.chkpt_path=\'/path/to/pretrained/ddpm/checkpoint.pt\' \
-                        dataset.ddpm.evaluation.type='form1' \
-                        dataset.ddpm.evaluation.temp=1.0 \
-                        dataset.ddpm.evaluation.batch_size=64 \
-                        dataset.ddpm.evaluation.save_path=\'/path/where/to/save/samples/\' \
-                        dataset.ddpm.evaluation.n_samples=4 \
-                        dataset.ddpm.evaluation.n_steps=1000 \
-                        dataset.ddpm.evaluation.save_vae=True \
-                        dataset.ddpm.evaluation.workers=1 \
-                        dataset.vae.evaluation.chkpt_path=\'/path/to/pretrained/vae/checkpoint.pt\'
-```
-For sample generation from the noise-conditioned version of DiffuseVAE, simply switch to the `vaedm-noise-cond` branch using `git checkout vaedm-noise-cond` and run the following command.
+Please refer to the scripts provided in the table corresponding to some inference tasks possible using the code.
 
-```
-python main/eval/ddpm/sample_cond.py +dataset=celebamaskhq128/test \
-                        dataset.ddpm.data.norm=True \
-                        dataset.ddpm.model.beta1=1e-6 \
-                        dataset.ddpm.model.beta2=0.6 \
-                        dataset.ddpm.model.n_timesteps=10 \
-                        dataset.ddpm.evaluation.seed=0 \
-                        dataset.ddpm.evaluation.sample_prefix='gpu_1' \
-                        dataset.ddpm.evaluation.device=\'gpu:0,1\' \
-                        dataset.ddpm.evaluation.chkpt_path=\'/path/to/pretrained/ddpm/checkpoint.pt\' \
-                        dataset.ddpm.evaluation.type='form1' \
-                        dataset.ddpm.evaluation.temp=1.0 \
-                        dataset.ddpm.evaluation.batch_size=16 \
-                        dataset.ddpm.evaluation.save_path=\'/path/where/to/save/samples/\' \
-                        dataset.ddpm.evaluation.n_samples=64 \
-                        dataset.ddpm.evaluation.n_steps=10 \
-                        dataset.ddpm.evaluation.save_vae=True \
-                        dataset.ddpm.evaluation.workers=1 \
-                        dataset.ddpm.evaluation.persistent_buffers=False \
-                        dataset.vae.evaluation.chkpt_path=\'/path/to/pretrained/vae/checkpoint.pt\'
-```
+|                          **Task**                         	|         **Reference**         	|
+|:---------------------------------------------------------:	|:-----------------------------:	|
+|            Sample/Reconstruct from Baseline VAE           	|      `scripts/test_ae.sh`     	|
+|                   Sample from DiffuseVAE                  	|     `scripts/test_ddpm.sh`    	|
+|          Generate reconstructions from DiffuseVAE         	| `scripts/test_recons_ddpm.sh` 	|
+| Interpolate in the VAE/DDPM latent space using DiffuseVAE 	|    `scripts/interpolate.sh`   	|
+
 
 ## Pretrained checkpoints
-**NOTE**: We are currently organizing all pretrained checkpoints and will add the links to download the checkpoints soon.
+All pretrained checkpoints have been organized by dataset and can be accessed here.
 
 ## Citing
 To cite DiffuseVAE please use the following BibTEX entries:
