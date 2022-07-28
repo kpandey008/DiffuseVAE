@@ -13,8 +13,6 @@ from datasets import (
     CIFAR10Dataset,
     FFHQDataset,
     CelebAHQDataset,
-    ReconstructionDataset,
-    ReconstructionDatasetv2,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,12 +75,6 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         dataset = AFHQv2Dataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "ffhq":
         dataset = FFHQDataset(root, norm=norm, transform=transform, **kwargs)
-    elif name == "recons":
-        dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
-    elif name == "reconsv2":
-        dataset = ReconstructionDatasetv2(
-            root, norm=norm, transform=transform, **kwargs
-        )
     elif name == "cifar10":
         assert image_size == 32
         transform = T.Compose(
