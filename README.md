@@ -7,7 +7,7 @@ This repo contains the official implementation of the paper: [DiffuseVAE: Effici
 
  DiffuseVAE is a novel generative framework that integrates a standard VAE within a diffusion model by conditioning the diffusion model samples on the VAE generated reconstructions. The resulting model can significantly improve upon the blurry samples generated from a standard VAE while at the same time equipping diffusion models with the low-dimensional VAE inferred latent code which can be used for downstream tasks like controllable synthesis and image attribute manipulation. In short, DiffuseVAE presents a generative model which combines the benefits of both VAEs and Diffusion models.
 
-![architecture!](./assets/method.png)
+![architecture!](./assets/diffusevae_tmlr-methodology.png)
 
 Our core contributions are as follows:
 
