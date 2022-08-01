@@ -1,8 +1,4 @@
-ulimit -n 2048
-# python -m pytorch_fid --device cuda:0 ~/datasets/downsampled/CelebA-HQ-128/ ~/ddpm_samples_celebahq_128_nsamples10k_form1/500/images/
-# /data/kushagrap20/.local/share/virtualenvs/VAEDM-GADu0QCg/lib/python3.6/site-packages/cleanfid/stats/cifar10_legacy_pytorch_train_32.npz
-python third_party/pytorch_fid/fid.py --device cuda:3 --mode1 np --mode2 np /data/kushagrap20/.local/share/virtualenvs/VAEDM-GADu0QCg/lib/python3.6/site-packages/cleanfid/stats/cifar10_legacy_pytorch_train_32.npz /data/kushagrap20/ddpm_samples_cifar10_nsamples10k_uncond_fixedlarge_test2/1000/images/
-
-# python eval/fid.py compute-fid-from-samples --num-batches 500 \
-#                                             /data/kushagrap20/.local/share/virtualenvs/VAEDM-GADu0QCg/lib/python3.6/site-packages/cleanfid/stats/cifar10_legacy_tensorflow_train_32.npz \
-#                                             /data/kushagrap20/ddpm_samples_cifar10_nsamples50k_uncond_fixedlarge_test2/1000/images
+# fidelity --gpu 3 --fid --input1 ~/datasets/CelebAMask-HQ-128/ --input2 ~/ddpm_cmhq_confirm_form2/49/images/ --input1-cache-name cmhq128
+fidelity --gpu 1 --fid --input1 ~/ddpm_cifar10_largemodel_test/form1/2550/1000/images/ --input2 cifar10-train
+# fidelity --gpu 3 --fid --input1 ~/datasets/img_align_celeba_64/ --input2 ~/ddpm_celeba64_benchmark_speedvsquality/form2_ddim/310/1000/images/ --input1-cache-name celeba64
+# fidelity --gpu 3 --fid --input1 ~/datasets/celeba_hq_256/ --input2 ~/ddpm_chq256_benchmark_speedvsquality/form1_ddim_expde/96/images/ --input1-cache-name chq256
