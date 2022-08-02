@@ -4,8 +4,16 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+torch = "==1.11"
+click = "*"
+matplotlib = "*"
+pytorch-lightning = "==1.4.9"
+torchvision = "==0.12"
+wandb = "*"
+hydra-core = "*"
+scipy = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.8"
+python_version = "3.7"

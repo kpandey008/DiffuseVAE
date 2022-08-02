@@ -9,10 +9,10 @@ from PIL import Image
 from datasets import (
     AFHQv2Dataset,
     CelebADataset,
+    CelebAHQDataset,
     CelebAMaskHQDataset,
     CIFAR10Dataset,
     FFHQDataset,
-    CelebAHQDataset,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,10 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         if flip:
             t_list.append(T.RandomHorizontalFlip())
         dataset = CIFAR10Dataset(
-            root, transform=None if t_list == [] else t_list, norm=norm, **kwargs
+            root,
+            transform=None if t_list == [] else T.Compose(t_list),
+            norm=norm,
+            **kwargs,
         )
     else:
         raise NotImplementedError(
