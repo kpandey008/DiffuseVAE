@@ -59,12 +59,13 @@ def space_timesteps(num_timesteps, desired_count, type="uniform"):
 
 def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
     assert isinstance(norm, bool)
-    transform = T.Compose(
-        [
-            T.Resize((image_size, image_size)),
-            T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
-        ]
-    )
+
+    # Construct transforms
+    t_list = [T.Resize((image_size, image_size))]
+    if flip:
+        t_list.append(T.RandomHorizontalFlip())
+    transform = T.Compose(t_list)
+
     if name == "celeba":
         dataset = CelebADataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "celebamaskhq":
@@ -77,12 +78,12 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         dataset = FFHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "cifar10":
         assert image_size == 32
-        transform = T.Compose(
-            [
-                T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
-            ]
+        t_list = []
+        if flip:
+            t_list.append(T.RandomHorizontalFlip())
+        dataset = CIFAR10Dataset(
+            root, transform=None if t_list == [] else t_list, norm=norm, **kwargs
         )
-        dataset = CIFAR10Dataset(root, transform=transform, norm=norm, **kwargs)
     else:
         raise NotImplementedError(
             f"The dataset {name} does not exist in our datastore."

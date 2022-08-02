@@ -11,13 +11,14 @@ import copy
 import hydra
 import pytorch_lightning as pl
 import torch
-from datasets.latent import ZipDataset
 from models.callbacks import ImageWriter
 from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel
 from models.vae import VAE
 from pytorch_lightning.utilities.seed import seed_everything
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader
 from util import configure_device, get_dataset
+
+from datasets import CIFAR10Dataset
 
 
 def __parse_str(s):
@@ -113,8 +114,8 @@ def generate_recons(config):
         image_size,
         norm=config_ddpm.data.norm,
         flip=config_ddpm.data.hflip,
+        subsample_size=n_samples,
     )
-    N = len(dataset)
 
     # Setup devices
     test_kwargs = {}
