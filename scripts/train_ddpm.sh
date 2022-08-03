@@ -5,22 +5,21 @@ python main/train_ddpm.py +dataset=cifar10/train \
                      dataset.ddpm.data.norm=True \
                      dataset.ddpm.data.hflip=True \
                      dataset.ddpm.model.dim=128 \
-                     dataset.ddpm.model.dropout=0.1 \
+                     dataset.ddpm.model.dropout=0.3 \
                      dataset.ddpm.model.attn_resolutions=\'16,\' \
                      dataset.ddpm.model.n_residual=2 \
                      dataset.ddpm.model.dim_mults=\'1,2,2,2\' \
-                     dataset.ddpm.model.n_heads=1 \
-                     dataset.ddpm.training.type='uncond' \
+                     dataset.ddpm.model.n_heads=8 \
+                     dataset.ddpm.training.type='form1' \
                      dataset.ddpm.training.cfd_rate=0.0 \
                      dataset.ddpm.training.epochs=2850 \
                      dataset.ddpm.training.z_cond=False \
                      dataset.ddpm.training.batch_size=32 \
                      dataset.ddpm.training.vae_chkpt_path=\'/data1/kushagrap20/diffusevae_rework/cifar10/vae-cifar10-epoch=500-train_loss=0.00.ckpt\' \
-                     dataset.ddpm.training.device=\'gpu:0,1,2,3\' \
-                     dataset.ddpm.training.results_dir=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1/\' \
-                     dataset.ddpm.training.restore_path=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1/checkpoints/ddpmrepro-cifar10_reprotry1-epoch=15-loss=0.0542.ckpt\' \
-                     dataset.ddpm.training.workers=4 \
-                     dataset.ddpm.training.chkpt_prefix=\'cifar10_reprotry1\'
+                     dataset.ddpm.training.device=\'gpu:0\' \
+                     dataset.ddpm.training.results_dir=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1_form1/\' \
+                     dataset.ddpm.training.workers=1 \
+                     dataset.ddpm.training.chkpt_prefix=\'cifar10_reprotry1_form1\'
 
 
 # # CelebA-64 (Form-1)

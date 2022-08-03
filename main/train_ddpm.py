@@ -10,7 +10,15 @@ from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
 from models.callbacks import EMAWeightUpdate
-from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel, UNetModel, UNet
+from models.diffusion import (
+    DDPM,
+    DDPMv2,
+    DDPMWrapper,
+    SuperResModel,
+    UNetModel,
+    UNet,
+    SuperResModelv2,
+)
 from models.vae import VAE
 from util import configure_device, get_dataset
 
@@ -49,9 +57,11 @@ def train(config):
     ddpm_type = config.training.type
 
     # Use the superres model for conditional training
-    # decoder_cls = UNetModel if ddpm_type == "uncond" else SuperResModel
-    decoder = UNet(
+    decoder_cls = UNet if ddpm_type == "uncond" else SuperResModelv2
+    print(f'Using model type: {decoder_cls} with ddpm_type={ddpm_type}')
+    decoder = decoder_cls(
         T=config.model.n_timesteps,
+        in_ch=config.data.n_channels,
         ch=config.model.dim,
         ch_mult=dim_mults,
         attn=[1],

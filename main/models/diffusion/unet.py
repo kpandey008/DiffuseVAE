@@ -158,13 +158,13 @@ class ResBlock(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, T, ch, ch_mult, attn, num_res_blocks, dropout):
+    def __init__(self, T, in_ch, ch, ch_mult, attn, num_res_blocks, dropout):
         super().__init__()
         assert all([i < len(ch_mult) for i in attn]), "attn index out of bound"
         tdim = ch * 4
         self.time_embedding = TimeEmbedding(T, ch, tdim)
 
-        self.head = nn.Conv2d(3, ch, kernel_size=3, stride=1, padding=1)
+        self.head = nn.Conv2d(in_ch, ch, kernel_size=3, stride=1, padding=1)
         self.downblocks = nn.ModuleList()
         chs = [ch]  # record output channel when dowmsample for upsample
         now_ch = ch
@@ -248,14 +248,14 @@ class UNet(nn.Module):
         return h
 
 
-class SuperResModel(UNet):
+class SuperResModelv2(UNet):
     """
     A UNetModel that performs super-resolution.
     Expects an extra kwarg `low_res` to condition on a low-resolution image.
     """
 
-    def __init__(self, T, in_channels, *args, **kwargs):
-        super().__init__(T, in_channels * 2, *args, **kwargs)
+    def __init__(self, T, in_ch, ch, *args, **kwargs):
+        super().__init__(T, in_ch * 2, ch, *args, **kwargs)
 
     def forward(self, x, timesteps, low_res=None, **kwargs):
         _, _, new_height, new_width = x.shape

@@ -58,19 +58,19 @@ python main/eval/ddpm/sample.py +dataset=cifar10/test \
                         dataset.ddpm.model.attn_resolutions=\'16,\' \
                         dataset.ddpm.model.dropout=0.1 \
                         dataset.ddpm.model.n_heads=1 \
-                        dataset.ddpm.evaluation.seed=0 \
-                        dataset.ddpm.evaluation.sample_prefix='gpu_0' \
-                        dataset.ddpm.evaluation.device=\'gpu:0\' \
+                        dataset.ddpm.evaluation.seed=3 \
+                        dataset.ddpm.evaluation.sample_prefix='gpu_3' \
+                        dataset.ddpm.evaluation.device=\'gpu:3\' \
                         dataset.ddpm.evaluation.save_mode='image' \
-                        dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1/checkpoints/ddpmrepro-cifar10_reprotry1-epoch=720-loss=0.0229.ckpt\' \
+                        dataset.ddpm.evaluation.chkpt_path=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1/checkpoints/ddpmrepro-cifar10_reprotry1-epoch=955-loss=0.0301.ckpt\' \
                         dataset.ddpm.evaluation.type='uncond' \
                         dataset.ddpm.evaluation.resample_strategy='truncated' \
                         dataset.ddpm.evaluation.skip_strategy='quad' \
                         dataset.ddpm.evaluation.sample_method='ddpm' \
                         dataset.ddpm.evaluation.sample_from='target' \
-                        dataset.ddpm.evaluation.batch_size=4 \
+                        dataset.ddpm.evaluation.batch_size=64 \
                         dataset.ddpm.evaluation.save_path=\'/data1/kushagrap20/ddpm_cifar10_uncond_repro_try1/\' \
-                        dataset.ddpm.evaluation.n_samples=4 \
+                        dataset.ddpm.evaluation.n_samples=2500 \
                         dataset.ddpm.evaluation.n_steps=1000 \
                         dataset.ddpm.evaluation.workers=1 \
 
