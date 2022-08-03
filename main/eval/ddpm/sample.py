@@ -12,7 +12,7 @@ import hydra
 import pytorch_lightning as pl
 from datasets.latent import UncondLatentDataset
 from models.callbacks import ImageWriter
-from models.diffusion import DDPM, DDPMWrapper, UNetModel
+from models.diffusion import DDPM, DDPMWrapper, UNetModel, UNet
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 from util import configure_device
@@ -40,16 +40,13 @@ def sample(config):
     # Load pretrained wrapper
     attn_resolutions = __parse_str(config.model.attn_resolutions)
     dim_mults = __parse_str(config.model.dim_mults)
-    decoder = UNetModel(
-        in_channels=config.data.n_channels,
-        model_channels=config.model.dim,
-        out_channels=3,
+    decoder = UNet(
+        T=config.model.n_timesteps,
+        ch=config.model.dim,
+        ch_mult=dim_mults,
+        attn=[1],
         num_res_blocks=config.model.n_residual,
-        attention_resolutions=attn_resolutions,
-        channel_mult=dim_mults,
-        use_checkpoint=False,
         dropout=config.model.dropout,
-        num_heads=config.model.n_heads,
     )
 
     ema_decoder = copy.deepcopy(decoder)

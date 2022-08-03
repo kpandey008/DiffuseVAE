@@ -10,7 +10,7 @@ from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
 from models.callbacks import EMAWeightUpdate
-from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel, UNetModel
+from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel, UNetModel, UNet
 from models.vae import VAE
 from util import configure_device, get_dataset
 
@@ -49,20 +49,14 @@ def train(config):
     ddpm_type = config.training.type
 
     # Use the superres model for conditional training
-    decoder_cls = UNetModel if ddpm_type == "uncond" else SuperResModel
-    decoder = decoder_cls(
-        in_channels=config.data.n_channels,
-        model_channels=config.model.dim,
-        out_channels=3,
+    # decoder_cls = UNetModel if ddpm_type == "uncond" else SuperResModel
+    decoder = UNet(
+        T=config.model.n_timesteps,
+        ch=config.model.dim,
+        ch_mult=dim_mults,
+        attn=[1],
         num_res_blocks=config.model.n_residual,
-        attention_resolutions=attn_resolutions,
-        channel_mult=dim_mults,
-        use_checkpoint=False,
         dropout=config.model.dropout,
-        num_heads=config.model.n_heads,
-        z_dim=config.training.z_dim,
-        use_scale_shift_norm=config.training.z_cond,
-        use_z=config.training.z_cond,
     )
 
     # EMA parameters are non-trainable
@@ -120,7 +114,8 @@ def train(config):
     results_dir = config.training.results_dir
     chkpt_callback = ModelCheckpoint(
         dirpath=os.path.join(results_dir, "checkpoints"),
-        filename=f"ddpmv2-{config.training.chkpt_prefix}" + "-{epoch:02d}-{loss:.4f}",
+        filename=f"ddpmrepro-{config.training.chkpt_prefix}"
+        + "-{epoch:02d}-{loss:.4f}",
         every_n_epochs=config.training.chkpt_interval,
         save_on_train_epoch_end=True,
     )
