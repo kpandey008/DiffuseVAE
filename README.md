@@ -63,7 +63,7 @@ Please refer to the scripts provided in the table corresponding to some inferenc
 
 
 ## Pretrained checkpoints
-All pretrained checkpoints have been organized by dataset and can be accessed here.
+All pretrained checkpoints have been organized by dataset and can be accessed [here](https://drive.google.com/drive/folders/1GzIh75NnpgPa4A1hSb_viPowuaSHnL7R?usp=sharing).
 
 ## Citing
 To cite DiffuseVAE please use the following BibTEX entries:
