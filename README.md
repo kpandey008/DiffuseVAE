@@ -61,6 +61,8 @@ Please refer to the scripts provided in the table corresponding to some inferenc
 |          Generate reconstructions from DiffuseVAE         	| `scripts/test_recons_ddpm.sh` 	|
 | Interpolate in the VAE/DDPM latent space using DiffuseVAE 	|    `scripts/interpolate.sh`   	|
 
+For computing the evaluation metrics (FID, IS etc.), we use the [torch-fidelity](https://github.com/toshas/torch-fidelity) package. See `scripts/fid.sh` for some sample usage examples.
+
 
 ## Pretrained checkpoints
 All pretrained checkpoints have been organized by dataset and can be accessed [here](https://drive.google.com/drive/folders/1GzIh75NnpgPa4A1hSb_viPowuaSHnL7R?usp=sharing).
