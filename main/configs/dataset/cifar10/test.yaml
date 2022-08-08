@@ -1,15 +1,15 @@
 # DDPM config used for DDPM training
 ddpm:
-  data:
+  data:   # Most of these have same meaning as in `cifar10/train.yaml`
     root: ???
     name: "cifar10"
     image_size: 32
     hflip: True
     n_channels: 3
     norm: True
-    ddpm_latent_path: ""
+    ddpm_latent_path: ""   # If sharing DDPM latents between diffusevae samples, path to .pt tensor containing latent codes
 
-  model:
+  model:   # Most of these have same meaning as in `cifar10/train.yaml`
     dim : 128
     attn_resolutions: "16,"
     n_residual: 2
@@ -21,27 +21,27 @@ ddpm:
     n_timesteps: 1000
 
   evaluation:
-    chkpt_path: ???
-    save_path: ???
-    z_cond: False
-    z_dim: 512
-    guidance_weight: 0.0
-    type: 'form1'
-    resample_strategy: "spaced"
-    skip_strategy: "uniform"
-    sample_method: "ddpm"
-    sample_from: "target"
-    seed: 0
-    device: "gpu:0"
+    chkpt_path: ???   # DiffuseVAE checkpoint path
+    save_path: ???   # Path to write samples to (automatically creates directories if needed)
+    z_cond: False   # Whether to condition UNet on vae latent
+    z_dim: 512   # Dimensionality of the vae latent
+    guidance_weight: 0.0   # Guidance weight during sampling if using Classifier free guidance
+    type: 'form1'   # DiffuseVAE type. One of ['form1', 'form2', 'uncond']. `uncond` is baseline DDPM
+    resample_strategy: "spaced"   # Whether to use spaced or truncated sampling. Use 'truncated' if sampling for the entire 1000 steps
+    skip_strategy: "uniform"   # Skipping strategy to use if `resample_strategy=spaced`. Can be ['uniform', 'quad'] as in DDIM
+    sample_method: "ddpm"   # Sampling backend. Can be ['ddim', 'ddpm']
+    sample_from: "target"   # Whether to sampling from the (non)-EMA model. Can be ['source', 'target']
+    seed: 0   # Random seed during sampling
+    device: "gpu:0"   # Device. Uses TPU/CPU if set to `tpu` or `cpu`. For GPU, use gpu:<comma separated id list>. Ex: gpu:0,1 would run only on gpus 0 and 1
     n_samples: 50000
-    n_steps: 1000
+    n_steps: 1000   # Number of reverse process steps to use during sampling. Typically [0-100] for DDIM and T=1000 for DDPM
     workers: 2
-    batch_size: 8
-    save_vae: False
-    variance: "fixedlarge"
-    sample_prefix: ""
-    temp: 1.0
-    save_mode: image
+    batch_size: 8   # Batch size during sampling per gpu
+    save_vae: False   # Whether to save VAE samples along with final samples. Useful to visualize the generator-refiner framework in action!
+    variance: "fixedlarge"   # DDPM variance to use when using DDPM. Can be ['fixedsmall', 'fixedlarge']
+    sample_prefix: ""   # Prefix used in naming when saving samples to disk
+    temp: 1.0   # Temperature sampling factor in DDPM latents
+    save_mode: image   # Whether to save samples as .png or .npy. One of ['image', 'numpy']
   
   interpolation:
     n_steps: 10

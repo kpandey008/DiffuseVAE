@@ -1,14 +1,14 @@
 # DDPM config used for DDPM training
 ddpm:
   data:
-    root: ???
-    name: "cifar10"
-    image_size: 32
-    hflip: True
-    n_channels: 3
-    norm: True
+    root: ???   # Dataset root
+    name: "cifar10"   # Dataset name (check main/util.py `get_dataset` for a registry)
+    image_size: 32   # Image resolution
+    hflip: True   # Whether to use horizontal flip
+    n_channels: 3   # Num input channels
+    norm: True   # Whether to scale data between [-1, 1]
 
-  model:
+  model:   # UNet specific params. Check the DDPM implementation for details on these
     dim : 128
     attn_resolutions: "16,"
     n_residual: 2
@@ -20,29 +20,29 @@ ddpm:
     n_timesteps: 1000
 
   training:
-    seed: 0
-    fp16: False
-    use_ema: True
-    z_cond: False
-    z_dim: 512
-    type: 'form1'
-    ema_decay: 0.9999
-    batch_size: 32
-    epochs: 5000
-    log_step: 1
-    device: "gpu:0"
-    chkpt_interval: 1
-    optimizer: "Adam"
-    lr: 2e-4
-    restore_path: ""
-    vae_chkpt_path: ???
-    results_dir: ???
-    workers: 2
-    grad_clip: 1.0
-    n_anneal_steps: 5000
-    loss: "l2"
-    chkpt_prefix: ""
-    cfd_rate: 0.0
+    seed: 0   # Random seed
+    fp16: False   # Whether to use fp16
+    use_ema: True   # Whether to use EMA (Improves sample quality)
+    z_cond: False   # Whether to condition UNet on vae latent
+    z_dim: 512   # Dimensionality of the vae latent
+    type: 'form1'   # DiffuseVAE type. One of ['form1', 'form2', 'uncond']. `uncond` is baseline DDPM
+    ema_decay: 0.9999   # EMA decay rate
+    batch_size: 32   # Training batch size (per GPU, per TPU core if using distributed training)
+    epochs: 5000   # Max number of epochs
+    log_step: 1   # log interval
+    device: "gpu:0"   # Device. Uses TPU/CPU if set to `tpu` or `cpu`. For GPU, use gpu:<comma separated id list>. Ex: gpu:0,1 would run only on gpus 0 and 1 
+    chkpt_interval: 1   # Number of epochs between two checkpoints
+    optimizer: "Adam"   # Optimizer
+    lr: 2e-4   # Learning rate
+    restore_path: ""   # Checkpoint restore path
+    vae_chkpt_path: ???   # VAE checkpoint path. Useful when using form1 or form2
+    results_dir: ???   # Directory to store the checkpoint in
+    workers: 2   # Num workers
+    grad_clip: 1.0   # gradient clipping threshold
+    n_anneal_steps: 5000   # number of warmup steps
+    loss: "l2"   # Diffusion loss type. Among ['l2', 'l1']
+    chkpt_prefix: ""   # prefix appended to the checkpoint name
+    cfd_rate: 0.0   # Conditioning signal dropout rate as in Classifier-free guidance
 
 # VAE config used for VAE training
 vae:
@@ -53,13 +53,13 @@ vae:
     n_channels: 3
     hflip: False
 
-  model:
+  model:  # VAE specific params. Check the `main/models/vae.py`
     enc_block_config : "32x7,32d2,32t16,16x4,16d2,16t8,8x4,8d2,8t4,4x3,4d4,4t1,1x3"
     enc_channel_config: "32:64,16:128,8:256,4:256,1:512"
     dec_block_config: "1x1,1u4,1t4,4x2,4u2,4t8,8x3,8u2,8t16,16x7,16u2,16t32,32x15"
     dec_channel_config: "32:64,16:128,8:256,4:256,1:512"
 
-  training:
+  training:   # Most of these are same as explained above but for VAE training
     seed: 0
     fp16: False
     batch_size: 128
@@ -73,4 +73,4 @@ vae:
     results_dir: ???
     workers: 2
     chkpt_prefix: ""
-    alpha: 1.0
+    alpha: 1.0   # The beta value in beta-vae. I know the param name might be misleading :(
