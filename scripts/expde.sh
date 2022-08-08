@@ -18,4 +18,4 @@
 # python main/expde.py fit-gmm ~/afhq256_dog_latents/latents_afhq.npy --save-path '/data1/kushagrap20/afhq256_dog_latents/gmm_z/' --n-components 100
 
 # Fit GMM CelebA-HQ-256
-python main/expde.py fit-gmm ~/celebahq_latents/latents_celebahq.npy --save-path '/data1/kushagrap20/celebahq_latents/gmm_z/' --n-components 150
+# python main/expde.py fit-gmm ~/celebahq_latents/latents_celebahq.npy --save-path '/data1/kushagrap20/celebahq_latents/gmm_z/' --n-components 150
