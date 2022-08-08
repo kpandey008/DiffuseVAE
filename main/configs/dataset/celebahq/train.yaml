@@ -1,0 +1,75 @@
+ddpm:
+  data:
+    root: ???
+    name: "celebahq"
+    image_size: 256
+    hflip: True
+    n_channels: 3
+    norm: True
+
+  model:
+    dim : 128
+    attn_resolutions: "16,"
+    n_residual: 2
+    dim_mults: "1,1,2,2,4,4"
+    dropout: 0.0
+    n_heads: 1
+    beta1: 0.0001
+    beta2: 0.02
+    n_timesteps: 1000
+
+  training:
+    seed: 0
+    fp16: False
+    use_ema: True
+    z_cond: False
+    z_dim: 1024
+    type: 'form1'
+    ema_decay: 0.9999
+    batch_size: 8
+    epochs: 5000
+    log_step: 1
+    device: "tpu"
+    chkpt_interval: 1
+    optimizer: "Adam"
+    lr: 2e-5
+    restore_path: ""
+    vae_chkpt_path: ???
+    results_dir: ???
+    workers: 2
+    grad_clip: 1.0
+    n_anneal_steps: 5000
+    loss: "l2"
+    chkpt_prefix: ""
+    cfd_rate: 0.0
+
+# VAE config used for VAE training
+vae:
+  data:
+    root: ???
+    name: "celebahq"
+    image_size: 256
+    n_channels: 3
+    hflip: True
+
+  model:
+    enc_block_config : "256x3,256d2,256t128,128x3,128d2,128t64,64x5,64d2,64t32,32x7,32d2,32t16,16x9,16d2,16t8,8x7,8d2,8t4,4x5,4d4,4t1,1x2"
+    enc_channel_config: "256:64,128:64,64:64,32:128,16:128,8:256,4:512,1:1024"
+    dec_block_config: "1x2,1u4,1t4,4x4,4u2,4t8,8x6,8u2,8t16,16x8,16u2,16t32,32x5,32u2,32t64,64x4,64u2,64t128,128x2,128u2,128t256,256x2"
+    dec_channel_config: "256:64,128:64,64:64,32:128,16:128,8:256,4:512,1:1024"
+
+  training:
+    seed: 0
+    fp16: False
+    batch_size: 16
+    epochs: 300
+    log_step: 1
+    device: "gpu:0"
+    chkpt_interval: 1
+    optimizer: "Adam"
+    lr: 1e-4
+    restore_path: ""
+    results_dir: ???
+    workers: 2
+    chkpt_prefix: ""
+    alpha: 1.0

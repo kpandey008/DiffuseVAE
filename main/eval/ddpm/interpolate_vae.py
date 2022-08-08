@@ -15,6 +15,7 @@ from models.vae import VAE
 from pytorch_lightning.utilities.seed import seed_everything
 from tqdm import tqdm
 from util import compare_interpolations, configure_device, save_as_images
+from joblib import load
 
 
 def __parse_str(s):
@@ -28,7 +29,8 @@ def interpolate_vae(config):
     config_vae = config.dataset.vae
     seed_everything(config_ddpm.evaluation.seed, workers=True)
 
-    dev, _ = configure_device(config_ddpm.evaluation.device)
+    # HARDCODED
+    dev = "cuda:0"
     image_size = config_ddpm.data.image_size
     z_dim = config_vae.model.z_dim
     n_steps = config_ddpm.evaluation.n_steps
@@ -42,10 +44,6 @@ def interpolate_vae(config):
     vae = VAE.load_from_checkpoint(
         config_vae.evaluation.chkpt_path,
         input_res=image_size,
-        enc_block_str=config_vae.model.enc_block_config,
-        dec_block_str=config_vae.model.dec_block_config,
-        enc_channel_str=config_vae.model.enc_channel_config,
-        dec_channel_str=config_vae.model.dec_channel_config,
     )
     vae.eval()
 
@@ -62,6 +60,9 @@ def interpolate_vae(config):
         use_checkpoint=False,
         dropout=config_ddpm.model.dropout,
         num_heads=config_ddpm.model.n_heads,
+        z_dim=config_ddpm.evaluation.z_dim,
+        use_scale_shift_norm=config_ddpm.evaluation.z_cond,
+        use_z=config_ddpm.evaluation.z_cond,
     )
 
     ema_decoder = copy.deepcopy(decoder)
@@ -75,7 +76,6 @@ def interpolate_vae(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
-        ddpm_latents=ddpm_latents,
     )
     target_ddpm = ddpm_cls(
         ema_decoder,
@@ -83,7 +83,6 @@ def interpolate_vae(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
-        ddpm_latents=ddpm_latents,
     )
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         config_ddpm.evaluation.chkpt_path,
@@ -91,10 +90,18 @@ def interpolate_vae(config):
         target_network=target_ddpm,
         vae=vae,
         conditional=True,
-        strict=False,
         pred_steps=n_steps,
+        eval_mode="sample",
+        resample_strategy=config_ddpm.evaluation.resample_strategy,
+        skip_strategy=config_ddpm.evaluation.skip_strategy,
+        sample_method=config_ddpm.evaluation.sample_method,
+        sample_from=config_ddpm.evaluation.sample_from,
         data_norm=config_ddpm.data.norm,
         temp=config_ddpm.evaluation.temp,
+        guidance_weight=config_ddpm.evaluation.guidance_weight,
+        z_cond=config_ddpm.evaluation.z_cond,
+        ddpm_latents=ddpm_latents,
+        strict=True,
     )
 
     ddpm_wrapper.to(dev)
@@ -102,11 +109,25 @@ def interpolate_vae(config):
 
     ddpm_samples_list = []
     vae_samples_list = []
+    expde_model_path = config_vae.evaluation.expde_model_path
 
     with torch.no_grad():
         # Interpolate in the VAE latent space
-        z_1 = torch.randn(1, z_dim, 1, 1, device=dev)
-        z_2 = torch.randn(1, z_dim, 1, 1, device=dev)
+        z_1 = torch.randn(1, z_dim, 1, 1, device=dev).float()
+        z_2 = torch.randn(1, z_dim, 1, 1, device=dev).float()
+
+        if expde_model_path is not None and expde_model_path != "":
+            print(
+                "Found an Ex-PDE model. Will sample latents for interpolation from it instead!"
+            )
+            gmm = load(expde_model_path)
+            gmm.set_params(random_state=config_ddpm.evaluation.seed)
+            z = gmm.sample(2)[0]
+            z_1 = torch.from_numpy(z[0]).view(1, z_dim, 1, 1).to(dev).float()
+            z_2 = torch.from_numpy(z[1]).view(1, z_dim, 1, 1).to(dev).float()
+            assert z_1.size() == (1, z_dim, 1, 1)
+
+        x_t = None
 
         for _, l in tqdm(enumerate(lam)):
             # Sample from VAE
@@ -118,13 +139,20 @@ def interpolate_vae(config):
             if config_ddpm.data.norm:
                 recons_inter = 2 * recons_inter - 1
 
-            x_t = (config_ddpm.evaluation.temp * torch.randn_like(recons_inter)).to(dev)
+            if x_t is None:
+                x_t = (config_ddpm.evaluation.temp * torch.randn_like(recons_inter)).to(
+                    dev
+                )
+                if config_ddpm.evaluation.type == "form2":
+                    x_t = recons_inter + x_t
 
-            if config_ddpm.evaluation.type == "form2":
-                x_t = recons_inter + x_t
-            ddpm_sample = ddpm_wrapper(x_t, cond=recons_inter, n_steps=n_steps)[
-                str(n_steps)
-            ].cpu()
+            ddpm_sample = ddpm_wrapper(
+                x_t,
+                cond=recons_inter,
+                z=z_inter if config_ddpm.evaluation.z_cond is True else None,
+                n_steps=n_steps,
+                ddpm_latents=ddpm_latents,
+            )[str(n_steps)].cpu()
             ddpm_samples_list.append(ddpm_sample)
 
     cat_ddpm_samples = torch.cat(ddpm_samples_list, dim=0)
@@ -142,10 +170,10 @@ def interpolate_vae(config):
     save_as_images(
         cat_vae_samples,
         file_name=os.path.join(save_path, "inter_vae"),
-        denorm=config_ddpm.data.norm,
+        denorm=False,
     )
 
-    # Compare
+    # # Compare
     save_path = config_ddpm.evaluation.save_path
     save_path = os.path.join(save_path, str(n_steps))
     os.makedirs(save_path, exist_ok=True)
@@ -153,6 +181,7 @@ def interpolate_vae(config):
         ddpm_samples_list,
         vae_samples_list,
         save_path=os.path.join(save_path, "inter_compare.png"),
+        denorm=config_ddpm.data.norm,
     )
 
 

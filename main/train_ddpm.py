@@ -10,8 +10,8 @@ from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
 
 from models.callbacks import EMAWeightUpdate
-from models.diffusion import (DDPM, DDPMv2, DDPMWrapper, SuperResModel,
-                              UNetModel)
+from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel, UNetModel
+from models.vae import VAE
 from util import configure_device, get_dataset
 
 logger = logging.getLogger(__name__)
@@ -60,6 +60,9 @@ def train(config):
         use_checkpoint=False,
         dropout=config.model.dropout,
         num_heads=config.model.n_heads,
+        z_dim=config.training.z_dim,
+        use_scale_shift_norm=config.training.z_cond,
+        use_z=config.training.z_cond,
     )
 
     # EMA parameters are non-trainable
@@ -80,6 +83,14 @@ def train(config):
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
     )
+    vae = VAE.load_from_checkpoint(
+        config.training.vae_chkpt_path,
+        input_res=image_size,
+    )
+    vae.eval()
+
+    for p in vae.parameters():
+        p.requires_grad = False
 
     assert isinstance(online_ddpm, ddpm_cls)
     assert isinstance(target_ddpm, ddpm_cls)
@@ -88,17 +99,20 @@ def train(config):
     ddpm_wrapper = DDPMWrapper(
         online_ddpm,
         target_ddpm,
+        vae,
         lr=lr,
+        cfd_rate=config.training.cfd_rate,
         n_anneal_steps=config.training.n_anneal_steps,
         loss=config.training.loss,
         conditional=False if ddpm_type == "uncond" else True,
         grad_clip_val=config.training.grad_clip,
+        z_cond=config.training.z_cond,
     )
 
     # Trainer
     train_kwargs = {}
     restore_path = config.training.restore_path
-    if restore_path is not None:
+    if restore_path != "":
         # Restore checkpoint
         train_kwargs["resume_from_checkpoint"] = restore_path
 
@@ -127,7 +141,7 @@ def train(config):
         train_kwargs["gpus"] = devs
 
         # Disable find_unused_parameters when using DDP training for performance reasons
-        from pytorch_lightning.plugins import DDPPlugin
+        from pytorch_lightning.plugins import DDPPlugin, DDPSpawnPlugin
 
         train_kwargs["plugins"] = DDPPlugin(find_unused_parameters=False)
         loader_kws["persistent_workers"] = True

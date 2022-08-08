@@ -13,8 +13,8 @@ ddpm:
     attn_resolutions: "16,"
     n_residual: 2
     dim_mults: "1,2,2,2"
-    dropout: 0.1
-    n_heads: 1
+    dropout: 0.3
+    n_heads: 8
     beta1: 0.0001
     beta2: 0.02
     n_timesteps: 1000
@@ -23,6 +23,8 @@ ddpm:
     seed: 0
     fp16: False
     use_ema: True
+    z_cond: False
+    z_dim: 512
     type: 'form1'
     ema_decay: 0.9999
     batch_size: 32
@@ -33,12 +35,14 @@ ddpm:
     optimizer: "Adam"
     lr: 2e-4
     restore_path: ""
+    vae_chkpt_path: ???
     results_dir: ???
     workers: 2
     grad_clip: 1.0
     n_anneal_steps: 5000
     loss: "l2"
     chkpt_prefix: ""
+    cfd_rate: 0.0
 
 # VAE config used for VAE training
 vae:
@@ -69,3 +73,4 @@ vae:
     results_dir: ???
     workers: 2
     chkpt_prefix: ""
+    alpha: 1.0

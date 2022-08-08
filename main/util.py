@@ -7,12 +7,12 @@ import torchvision.transforms as T
 from PIL import Image
 
 from datasets import (
-    AFHQDataset,
+    AFHQv2Dataset,
     CelebADataset,
+    CelebAHQDataset,
     CelebAMaskHQDataset,
     CIFAR10Dataset,
-    ReconstructionDataset,
-    ReconstructionDatasetv2,
+    FFHQDataset,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,39 +27,66 @@ def configure_device(device):
         gpu_id = device.split(":")[-1]
         if gpu_id == "":
             # Use all GPU's
-            gpu_id = "-1"
+            gpu_id = -1
+        gpu_id = [int(id) for id in gpu_id.split(",")]
         return f"cuda:{gpu_id}", gpu_id
     return device
 
 
+def space_timesteps(num_timesteps, desired_count, type="uniform"):
+    """
+    Create a list of timesteps to use from an original diffusion process,
+    given the number of timesteps we want to take from equally-sized portions
+    of the original process.
+    :param num_timesteps: the number of diffusion steps in the original
+                          process to divide up.
+    :return: a set of diffusion steps from the original process to use.
+    """
+    if type == "uniform":
+        for i in range(1, num_timesteps):
+            if len(range(0, num_timesteps, i)) == desired_count:
+                return range(0, num_timesteps, i)
+        raise ValueError(
+            f"cannot create exactly {desired_count} steps with an integer stride"
+        )
+    elif type == "quad":
+        seq = np.linspace(0, np.sqrt(num_timesteps * 0.8), desired_count) ** 2
+        seq = [int(s) for s in list(seq)]
+        return seq
+    else:
+        raise NotImplementedError
+
+
 def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
     assert isinstance(norm, bool)
-    transform = T.Compose(
-        [
-            T.Resize((image_size, image_size)),
-            T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
-        ]
-    )
+
+    # Construct transforms
+    t_list = [T.Resize((image_size, image_size))]
+    if flip:
+        t_list.append(T.RandomHorizontalFlip())
+    transform = T.Compose(t_list)
+
     if name == "celeba":
         dataset = CelebADataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "celebamaskhq":
         dataset = CelebAMaskHQDataset(root, norm=norm, transform=transform, **kwargs)
+    elif name == "celebahq":
+        dataset = CelebAHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "afhq":
-        dataset = AFHQDataset(root, norm=norm, transform=transform, **kwargs)
-    elif name == "recons":
-        dataset = ReconstructionDataset(root, norm=norm, transform=transform, **kwargs)
-    elif name == "reconsv2":
-        dataset = ReconstructionDatasetv2(
-            root, norm=norm, transform=transform, **kwargs
-        )
+        dataset = AFHQv2Dataset(root, norm=norm, transform=transform, **kwargs)
+    elif name == "ffhq":
+        dataset = FFHQDataset(root, norm=norm, transform=transform, **kwargs)
     elif name == "cifar10":
         assert image_size == 32
-        transform = T.Compose(
-            [
-                T.RandomHorizontalFlip() if flip else T.Lambda(lambda t: t),
-            ]
+        t_list = []
+        if flip:
+            t_list.append(T.RandomHorizontalFlip())
+        dataset = CIFAR10Dataset(
+            root,
+            transform=None if t_list == [] else T.Compose(t_list),
+            norm=norm,
+            **kwargs,
         )
-        dataset = CIFAR10Dataset(root, transform=transform, norm=norm, **kwargs)
     else:
         raise NotImplementedError(
             f"The dataset {name} does not exist in our datastore."
@@ -81,7 +108,11 @@ def plot_interpolations(interpolations, save_path=None, figsize=(10, 5)):
 
 
 def compare_interpolations(
-    interpolations_1, interpolations_2, save_path=None, figsize=(10, 2)
+    interpolations_1,
+    interpolations_2,
+    save_path=None,
+    figsize=(10, 2),
+    denorm=True,
 ):
     assert len(interpolations_1) == len(interpolations_2)
     N = len(interpolations_1)
@@ -89,6 +120,11 @@ def compare_interpolations(
     fig, ax = plt.subplots(nrows=2, ncols=N, figsize=figsize)
 
     for i, (inter_1, inter_2) in enumerate(zip(interpolations_1, interpolations_2)):
+        # De-Norm
+        inter_1 = 0.5 * inter_1 + 0.5 if denorm else inter_1
+        # inter_2 = 0.5 * inter_2 + 0.5 if denorm else inter_2
+
+        # Plot
         ax[0, i].imshow(inter_1.squeeze().permute(1, 2, 0))
         ax[0, i].axis("off")
 
@@ -96,7 +132,7 @@ def compare_interpolations(
         ax[1, i].axis("off")
 
     if save_path is not None:
-        plt.savefig(save_path, dpi=300, pad_inches=0)
+        plt.savefig(save_path, dpi=100, pad_inches=0)
 
 
 def convert_to_np(obj):
@@ -133,7 +169,6 @@ def save_as_images(obj, file_name="output", denorm=True):
         out = (out * 255).clip(0, 255).astype(np.uint8)
         img_out = Image.fromarray(out)
         current_file_name = file_name + "_%d.png" % i
-        logger.info("Saving image to {}".format(current_file_name))
         img_out.save(current_file_name, "png")
 
 
@@ -145,7 +180,6 @@ def save_as_np(obj, file_name="output", denorm=True):
 
     for i, out in enumerate(obj_list):
         current_file_name = file_name + "_%d.npy" % i
-        logger.info("Saving image to {}".format(current_file_name))
         np.save(current_file_name, out)
 
 

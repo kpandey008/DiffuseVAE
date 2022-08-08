@@ -43,10 +43,6 @@ def sample_cond(config):
     vae = VAE.load_from_checkpoint(
         config_vae.evaluation.chkpt_path,
         input_res=image_size,
-        enc_block_str=config_vae.model.enc_block_config,
-        dec_block_str=config_vae.model.dec_block_config,
-        enc_channel_str=config_vae.model.enc_channel_config,
-        dec_channel_str=config_vae.model.dec_channel_config,
     )
     vae.eval()
 
@@ -63,6 +59,9 @@ def sample_cond(config):
         use_checkpoint=False,
         dropout=config_ddpm.model.dropout,
         num_heads=config_ddpm.model.n_heads,
+        z_dim=config_ddpm.evaluation.z_dim,
+        use_scale_shift_norm=config_ddpm.evaluation.z_cond,
+        use_z=config_ddpm.evaluation.z_cond,
     )
 
     ema_decoder = copy.deepcopy(decoder)
@@ -76,7 +75,6 @@ def sample_cond(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
-        ddpm_latents=ddpm_latents,
     )
     target_ddpm = ddpm_cls(
         ema_decoder,
@@ -84,22 +82,26 @@ def sample_cond(config):
         beta_2=config_ddpm.model.beta2,
         T=config_ddpm.model.n_timesteps,
         var_type=config_ddpm.evaluation.variance,
-        ddpm_latents=ddpm_latents,
     )
 
-    # NOTE: Using strict=False since the VAE model is not included
-    # in the pretrained DDPM state_dict
     ddpm_wrapper = DDPMWrapper.load_from_checkpoint(
         config_ddpm.evaluation.chkpt_path,
         online_network=online_ddpm,
         target_network=target_ddpm,
         vae=vae,
         conditional=True,
-        strict=False,
         pred_steps=n_steps,
         eval_mode="sample",
+        resample_strategy=config_ddpm.evaluation.resample_strategy,
+        skip_strategy=config_ddpm.evaluation.skip_strategy,
+        sample_method=config_ddpm.evaluation.sample_method,
+        sample_from=config_ddpm.evaluation.sample_from,
         data_norm=config_ddpm.data.norm,
         temp=config_ddpm.evaluation.temp,
+        guidance_weight=config_ddpm.evaluation.guidance_weight,
+        z_cond=config_ddpm.evaluation.z_cond,
+        strict=True,
+        ddpm_latents=ddpm_latents,
     )
 
     # Create predict dataset of latents
@@ -107,6 +109,8 @@ def sample_cond(config):
         (n_samples, config_vae.model.z_dim, 1, 1),
         (n_samples, 3, image_size, image_size),
         share_ddpm_latent=True if ddpm_latent_path != "" else False,
+        expde_model_path=config_vae.evaluation.expde_model_path,
+        seed=config_ddpm.evaluation.seed,
     )
 
     # Setup devices

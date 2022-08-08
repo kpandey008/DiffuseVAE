@@ -16,7 +16,6 @@ class DDPMv2(nn.Module):
         beta_2=0.02,
         T=1000,
         var_type="fixedlarge",
-        ddpm_latents=None,
     ):
         super().__init__()
         self.decoder = decoder
@@ -24,7 +23,6 @@ class DDPMv2(nn.Module):
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.var_type = var_type
-        self.ddpm_latents = ddpm_latents
 
         # Main constants
         self.register_buffer(
@@ -90,7 +88,9 @@ class DDPMv2(nn.Module):
             - extract(self.sqrt_recipm1_alphas_cumprod, t, x_t.shape) * eps
         )
 
-    def get_posterior_mean_covariance(self, x_t, t, clip_denoised=True, cond=None):
+    def get_posterior_mean_covariance(
+        self, x_t, t, clip_denoised=True, cond=None, z_vae=None, guidance_weight=0.0
+    ):
         B = x_t.size(0)
         t_ = torch.full((x_t.size(0),), t, device=x_t.device, dtype=torch.long)
         assert t_.shape == torch.Size(
@@ -100,10 +100,20 @@ class DDPMv2(nn.Module):
         )
         x_hat = 0 if cond is None else cond
 
+        # Compute updated score
+        if guidance_weight == 0:
+            eps_score = self.decoder(x_t, t_, low_res=cond, z=z_vae)
+        else:
+            eps_score = (1 + guidance_weight) * self.decoder(
+                x_t, t_, low_res=cond, z=z_vae
+            ) - guidance_weight * self.decoder(
+                x_t,
+                t_,
+                low_res=torch.zeros_like(cond),
+                z=torch.zeros_like(z_vae) if z_vae is not None else None,
+            )
         # Generate the reconstruction from x_t
-        x_recons = self._predict_xstart_from_eps(
-            x_t, t_, self.decoder(x_t, t_, low_res=cond), cond=cond
-        )
+        x_recons = self._predict_xstart_from_eps(x_t, t_, eps_score, cond=cond)
 
         # Clip
         if clip_denoised:
@@ -121,7 +131,12 @@ class DDPMv2(nn.Module):
             # for fixedlarge, we set the initial (log-)variance like so
             # to get a better decoder log likelihood.
             "fixedlarge": (
-                self.betas,
+                torch.cat(
+                    [
+                        torch.tensor([self.post_variance[1]], device=x_t.device),
+                        self.betas[1:],
+                    ]
+                ),
                 torch.log(
                     torch.cat(
                         [
@@ -140,22 +155,32 @@ class DDPMv2(nn.Module):
         post_log_variance = extract(p_log_variance, t_, x_t.shape)
         return post_mean, post_variance, post_log_variance
 
-    def sample(self, x_t, cond=None, n_steps=None, checkpoints=[]):
-        # The sampling process goes here!
+    def sample(
+        self,
+        x_t,
+        cond=None,
+        z_vae=None,
+        n_steps=None,
+        guidance_weight=0.0,
+        checkpoints=[],
+        ddpm_latents=None,
+    ):
+        # The sampling process goes here. This sampler also supports truncated sampling.
+        # For spaced sampling (used in DDIM etc.) see SpacedDiffusion model in spaced_diff.py
         x = x_t
         B, *_ = x_t.shape
         sample_dict = {}
 
-        if self.ddpm_latents is not None:
-            self.ddpm_latents = self.ddpm_latents.to(x_t.device)
+        if ddpm_latents is not None:
+            ddpm_latents = ddpm_latents.to(x_t.device)
 
         num_steps = self.T if n_steps is None else n_steps
         checkpoints = [num_steps] if checkpoints == [] else checkpoints
         for idx, t in enumerate(reversed(range(0, num_steps))):
             z = (
                 torch.randn_like(x_t)
-                if self.ddpm_latents is None
-                else torch.stack([self.ddpm_latents[idx]] * B)
+                if ddpm_latents is None
+                else torch.stack([ddpm_latents[idx]] * B)
             )
             (
                 post_mean,
@@ -165,6 +190,8 @@ class DDPMv2(nn.Module):
                 x,
                 t,
                 cond=cond,
+                z_vae=z_vae,
+                guidance_weight=guidance_weight,
             )
             nonzero_mask = (
                 torch.tensor(t != 0, device=x.device)
@@ -195,7 +222,7 @@ class DDPMv2(nn.Module):
             + eps * extract(self.minus_sqrt_alpha_bar, t, x_start.shape)
         )
 
-    def forward(self, x, eps, t, low_res=None):
+    def forward(self, x, eps, t, low_res=None, z=None):
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t, low_res=low_res)
-        return self.decoder(x_t, t, low_res=low_res)
+        return self.decoder(x_t, t, low_res=low_res, z=z)

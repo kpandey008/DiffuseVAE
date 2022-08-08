@@ -14,8 +14,8 @@ ddpm:
     attn_resolutions: "16,"
     n_residual: 2
     dim_mults: "1,2,2,2"
-    dropout: 0.1
-    n_heads: 1
+    dropout: 0.3
+    n_heads: 8
     beta1: 0.0001
     beta2: 0.02
     n_timesteps: 1000
@@ -23,7 +23,14 @@ ddpm:
   evaluation:
     chkpt_path: ???
     save_path: ???
+    z_cond: False
+    z_dim: 512
+    guidance_weight: 0.0
     type: 'form1'
+    resample_strategy: "spaced"
+    skip_strategy: "uniform"
+    sample_method: "ddpm"
+    sample_from: "target"
     seed: 0
     device: "gpu:0"
     n_samples: 50000
@@ -57,6 +64,7 @@ vae:
   evaluation:
     chkpt_path: ???
     save_path: ???
+    expde_model_path: ""
     seed: 0
     device: "gpu:0"
     workers: 2

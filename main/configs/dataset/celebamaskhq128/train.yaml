@@ -12,7 +12,7 @@ ddpm:
     dim : 128
     attn_resolutions: "16,"
     n_residual: 2
-    dim_mults: "1,1,2,2,4,4"
+    dim_mults: "1,2,2,3,4"
     dropout: 0.0
     n_heads: 1
     beta1: 0.0001
@@ -23,6 +23,8 @@ ddpm:
     seed: 0
     fp16: False
     use_ema: True
+    z_cond: False
+    z_dim: 1024
     type: 'form1'
     ema_decay: 0.9999
     batch_size: 8
@@ -33,12 +35,14 @@ ddpm:
     optimizer: "Adam"
     lr: 2e-5
     restore_path: ""
+    vae_chkpt_path: ???
     results_dir: ???
     workers: 16
     grad_clip: 1.0
     n_anneal_steps: 5000
     loss: "l2"
     chkpt_prefix: ""
+    cfd_rate: 0.0
 
 # VAE config used for VAE training
 vae:
@@ -47,7 +51,7 @@ vae:
     name: "celebamaskhq"
     image_size: 128
     n_channels: 3
-    hflip: False
+    hflip: True
 
   model:
     enc_block_config : "128x1,128d2,128t64,64x3,64d2,64t32,32x3,32d2,32t16,16x7,16d2,16t8,8x3,8d2,8t4,4x3,4d4,4t1,1x2"
