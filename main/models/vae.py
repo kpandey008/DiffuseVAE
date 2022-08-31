@@ -268,21 +268,201 @@ class VAE(pl.LightningModule):
         return optimizer
 
 
+class CondResBlock(nn.Module):
+    def __init__(
+        self,
+        in_width,
+        middle_width,
+        out_width,
+        n_classes,
+        down_rate=None,
+        residual=False,
+        use_3x3=True,
+        zero_last=False,
+    ):
+        super().__init__()
+        self.cls_embedding = nn.Embedding(n_classes, out_width)
+        self.down_rate = down_rate
+        self.residual = residual
+        self.c1 = get_1x1(in_width, middle_width)
+        self.c2 = (
+            get_3x3(middle_width, middle_width)
+            if use_3x3
+            else get_1x1(middle_width, middle_width)
+        )
+        self.c3 = (
+            get_3x3(middle_width, middle_width)
+            if use_3x3
+            else get_1x1(middle_width, middle_width)
+        )
+        self.c4 = get_1x1(middle_width, out_width, zero_weights=zero_last)
+
+    def forward(self, x, cls_label):
+        y_emb = self.cls_embedding(cls_label)[:, :, None, None]
+        xhat = self.c1(F.gelu(x))
+        xhat = self.c2(F.gelu(xhat))
+        xhat = self.c3(F.gelu(xhat))
+        xhat = self.c4(F.gelu(xhat))
+        xhat += y_emb
+        out = x + xhat if self.residual else xhat
+        if self.down_rate is not None:
+            out = F.avg_pool2d(out, kernel_size=self.down_rate, stride=self.down_rate)
+        return out
+
+
+class CondEncoder(nn.Module):
+    def __init__(self, block_config_str, channel_config_str, n_classes):
+        super().__init__()
+        self.in_conv = nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False)
+        block_config = parse_layer_string(block_config_str)
+        channel_config = parse_channel_string(channel_config_str)
+        self.blocks = nn.ModuleList()
+        for _, (res, down_rate) in enumerate(block_config):
+            if isinstance(res, tuple):
+                # Denotes transition to another resolution
+                res1, res2 = res
+                self.blocks.append(
+                    nn.Conv2d(channel_config[res1], channel_config[res2], 1, bias=False)
+                )
+                continue
+            in_channel = channel_config[res]
+            use_3x3 = res > 1
+            self.blocks.append(
+                CondResBlock(
+                    in_channel,
+                    int(0.5 * in_channel),
+                    in_channel,
+                    n_classes,
+                    down_rate=down_rate,
+                    residual=True,
+                    use_3x3=use_3x3,
+                )
+            )
+        # TODO: If the training is unstable try using scaling the weights
+        # self.block_mod = nn.Sequential(*blocks)
+
+        # Latents
+        self.mu = nn.Conv2d(channel_config[1], channel_config[1], 1, bias=False)
+        self.logvar = nn.Conv2d(channel_config[1], channel_config[1], 1, bias=False)
+
+    def forward(self, input, cls_label):
+        x = self.in_conv(input)
+
+        for mod in self.blocks:
+            if isinstance(mod, CondResBlock):
+                x = mod(x, cls_label)
+            else:
+                x = mod(x)
+        return self.mu(x), self.logvar(x)
+
+
+# Implementation of the Conditional Resnet-VAE using a ResNet backbone as encoder
+# and Upsampling blocks as the decoder
+class CVAE(pl.LightningModule):
+    def __init__(
+        self,
+        input_res,
+        enc_block_str,
+        dec_block_str,
+        enc_channel_str,
+        dec_channel_str,
+        n_classes,
+        emb_dim=512,
+        alpha=1.0,
+        lr=1e-4,
+    ):
+        super().__init__()
+        self.save_hyperparameters()
+        self.input_res = input_res
+        self.enc_block_str = enc_block_str
+        self.dec_block_str = dec_block_str
+        self.enc_channel_str = enc_channel_str
+        self.dec_channel_str = dec_channel_str
+        self.alpha = alpha
+        self.lr = lr
+
+        # Encoder architecture
+        self.enc = CondEncoder(self.enc_block_str, self.enc_channel_str, n_classes)
+
+        # Decoder Architecture
+        self.y_emb = nn.Embedding(n_classes, emb_dim)
+        self.dec = Decoder(self.input_res, self.dec_block_str, self.dec_channel_str)
+
+    def encode(self, x, cls_label):
+        mu, logvar = self.enc(x, cls_label)
+        return mu, logvar
+
+    def decode(self, z, cls_label):
+        y_emb = self.y_emb(cls_label)[:, :, None, None]
+        z = torch.cat([z, y_emb], dim=1)
+        return self.dec(z)
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def compute_kl(self, mu, logvar):
+        return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    def forward(self, z, cls_label):
+        # Only sample during inference
+        decoder_out = self.decode(z, cls_label)
+        return decoder_out
+
+    def forward_recons(self, x, cls_label):
+        # For generating reconstructions during inference
+        mu, logvar = self.encode(x, cls_label)
+        z = self.reparameterize(mu, logvar)
+        decoder_out = self.decode(z, cls_label)
+        return decoder_out
+
+    def training_step(self, batch, batch_idx):
+        x, cls_label = batch
+
+        # Encoder
+        mu, logvar = self.encode(x, cls_label)
+
+        # Reparameterization Trick
+        z = self.reparameterize(mu, logvar)
+
+        # Decoder
+        decoder_out = self.decode(z, cls_label)
+
+        # Compute loss
+        mse_loss = nn.MSELoss(reduction="sum")
+        recons_loss = mse_loss(decoder_out, x)
+        kl_loss = self.compute_kl(mu, logvar)
+        self.log("Recons Loss", recons_loss, prog_bar=True)
+        self.log("Kl Loss", kl_loss, prog_bar=True)
+
+        total_loss = recons_loss + self.alpha * kl_loss
+        self.log("Total Loss", total_loss)
+        return total_loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        return optimizer
+
+
 if __name__ == "__main__":
     enc_block_config_str = "128x1,128d2,128t64,64x3,64d2,64t32,32x3,32d2,32t16,16x7,16d2,16t8,8x3,8d2,8t4,4x3,4d4,4t1,1x2"
     enc_channel_config_str = "128:64,64:64,32:128,16:128,8:256,4:512,1:1024"
 
     dec_block_config_str = "1x1,1u4,1t4,4x2,4u2,4t8,8x2,8u2,8t16,16x6,16u2,16t32,32x2,32u2,32t64,64x2,64u2,64t128,128x1"
-    dec_channel_config_str = "128:64,64:64,32:128,16:128,8:256,4:512,1:1024"
+    dec_channel_config_str = "128:64,64:64,32:128,16:128,8:256,4:512,1:1536"
 
-    vae = VAE(
+    vae = CVAE(
+        128,
         enc_block_config_str,
         dec_block_config_str,
         enc_channel_config_str,
         dec_channel_config_str,
+        n_classes=1000,
+        emb_dim=512,
     )
 
     sample = torch.randn(1, 3, 128, 128)
-    out = vae.training_step(sample, 0)
-    print(vae)
+    labels = torch.tensor([100])
+    out = vae.training_step((sample, labels), 0)
     print(out.shape)
