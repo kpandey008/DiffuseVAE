@@ -13,7 +13,7 @@ import pytorch_lightning as pl
 import torch
 from datasets.latent import LatentDataset
 from models.callbacks import ImageWriter
-from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModel
+from models.diffusion import DDPM, DDPMv2, DDPMWrapper, SuperResModelv2
 from models.vae import VAE
 from pytorch_lightning.utilities.seed import seed_everything
 from torch.utils.data import DataLoader
@@ -49,14 +49,14 @@ def sample_cond(config):
     # Load pretrained wrapper
     attn_resolutions = __parse_str(config_ddpm.model.attn_resolutions)
     dim_mults = __parse_str(config_ddpm.model.dim_mults)
-    decoder = SuperResModel(
+    decoder = SuperResModelv2(
         in_channels=config_ddpm.data.n_channels,
+        resolution=image_size,
         model_channels=config_ddpm.model.dim,
         out_channels=3,
         num_res_blocks=config_ddpm.model.n_residual,
         attention_resolutions=attn_resolutions,
         channel_mult=dim_mults,
-        use_checkpoint=False,
         dropout=config_ddpm.model.dropout,
         num_heads=config_ddpm.model.n_heads,
         z_dim=config_ddpm.evaluation.z_dim,

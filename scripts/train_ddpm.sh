@@ -1,4 +1,4 @@
-# # CIFAR-10 (Form-1)
+# CIFAR-10 (Form-1)
 python main/train_ddpm.py +dataset=cifar10/train \
                      dataset.ddpm.data.root=\'/data1/kushagrap20/datasets/\' \
                      dataset.ddpm.data.name='cifar10' \
@@ -9,15 +9,16 @@ python main/train_ddpm.py +dataset=cifar10/train \
                      dataset.ddpm.model.attn_resolutions=\'16,\' \
                      dataset.ddpm.model.n_residual=2 \
                      dataset.ddpm.model.dim_mults=\'1,2,2,2\' \
-                     dataset.ddpm.model.n_heads=8 \
+                     dataset.ddpm.model.n_heads=1 \
                      dataset.ddpm.training.type='form1' \
                      dataset.ddpm.training.cfd_rate=0.0 \
-                     dataset.ddpm.training.epochs=2850 \
+                     dataset.ddpm.training.epochs=2550 \
                      dataset.ddpm.training.z_cond=False \
-                     dataset.ddpm.training.batch_size=32 \
+                     dataset.ddpm.training.batch_size=64 \
                      dataset.ddpm.training.vae_chkpt_path=\'/data1/kushagrap20/diffusevae_rework/cifar10/vae-cifar10-epoch=500-train_loss=0.00.ckpt\' \
-                     dataset.ddpm.training.device=\'gpu:0\' \
+                     dataset.ddpm.training.device=\'gpu:0,1,2,3\' \
                      dataset.ddpm.training.results_dir=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1_form1/\' \
+                     dataset.ddpm.training.restore_path=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1_form1/checkpoints/ddpmrepro-cifar10_reprotry1_form1-epoch=2399-loss=0.0212.ckpt\' \
                      dataset.ddpm.training.workers=1 \
                      dataset.ddpm.training.chkpt_prefix=\'cifar10_reprotry1_form1\'
 

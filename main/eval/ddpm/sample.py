@@ -41,12 +41,18 @@ def sample(config):
     attn_resolutions = __parse_str(config.model.attn_resolutions)
     dim_mults = __parse_str(config.model.dim_mults)
     decoder = UNet(
-        T=config.model.n_timesteps,
-        ch=config.model.dim,
-        ch_mult=dim_mults,
-        attn=[1],
+        in_channels=config.data.n_channels,
+        resolution=image_size,
+        model_channels=config.model.dim,
+        out_channels=3,
         num_res_blocks=config.model.n_residual,
+        attention_resolutions=attn_resolutions,
         dropout=config.model.dropout,
+        channel_mult=dim_mults,
+        num_heads=config.model.n_heads,
+        z_dim=config.evaluation.z_dim,
+        use_scale_shift_norm=config.evaluation.z_cond,
+        use_z=config.evaluation.z_cond,
     )
 
     ema_decoder = copy.deepcopy(decoder)

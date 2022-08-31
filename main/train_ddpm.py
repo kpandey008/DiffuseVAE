@@ -60,13 +60,18 @@ def train(config):
     decoder_cls = UNet if ddpm_type == "uncond" else SuperResModelv2
     print(f'Using model type: {decoder_cls} with ddpm_type={ddpm_type}')
     decoder = decoder_cls(
-        T=config.model.n_timesteps,
-        in_ch=config.data.n_channels,
-        ch=config.model.dim,
-        ch_mult=dim_mults,
-        attn=[1],
+        in_channels=config.data.n_channels,
+        resolution=image_size,
+        model_channels=config.model.dim,
+        out_channels=3,
         num_res_blocks=config.model.n_residual,
+        attention_resolutions=attn_resolutions,
         dropout=config.model.dropout,
+        channel_mult=dim_mults,
+        num_heads=config.model.n_heads,
+        z_dim=config.training.z_dim,
+        use_scale_shift_norm=config.training.z_cond,
+        use_z=config.training.z_cond,
     )
 
     # EMA parameters are non-trainable
