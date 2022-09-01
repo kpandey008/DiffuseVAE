@@ -46,6 +46,31 @@
 #                      dataset.ddpm.training.chkpt_prefix=\'celeba64_rework_form1__21stJune_sota_nheads=8_dropout=0.1\'
 
 
+# ImageNet-64 (Form-1)
+python main/train_ddpm.py +dataset=celeba64/train \
+                     dataset.ddpm.data.root=\'/data1/kushagrap20/datasets/imagenet64/\' \
+                     dataset.ddpm.data.name='imagenet64' \
+                     dataset.ddpm.data.norm=True \
+                     dataset.ddpm.data.hflip=True \
+                     dataset.ddpm.model.dim=128 \
+                     dataset.ddpm.model.dropout=0.1 \
+                     dataset.ddpm.model.attn_resolutions=\'32,16,8,\' \
+                     dataset.ddpm.model.n_residual=3 \
+                     dataset.ddpm.model.dim_mults=\'1,2,3,4\' \
+                     dataset.ddpm.model.n_heads=8 \
+                     dataset.ddpm.training.type='uncond' \
+                     dataset.ddpm.training.lr=3e-4 \
+                     dataset.ddpm.training.cfd_rate=0.0 \
+                     dataset.ddpm.training.epochs=250 \
+                     dataset.ddpm.training.z_cond=False \
+                     dataset.ddpm.training.use_scale_shift_norm=True \
+                     dataset.ddpm.training.batch_size=32 \
+                     dataset.ddpm.training.device=\'gpu:0\' \
+                     dataset.ddpm.training.results_dir=\'/data1/kushagrap20/diffusevae_imagenet64_rework_uncond_Sep1/\' \
+                     dataset.ddpm.training.workers=1 \
+                     dataset.ddpm.training.chkpt_prefix=\'imagenet64_rework_uncond_Sep1\'
+
+
 # # CelebAHQ-128 (Form1)
 # python train_ddpm.py +dataset=celebamaskhq128/train \
 #                      dataset.ddpm.data.root=\'/data1/kushagrap20/datasets/CelebAMask-HQ\' \

@@ -204,7 +204,7 @@ class DDPM(nn.Module):
             self.minus_sqrt_alpha_bar, t, x_start.shape
         )
 
-    def forward(self, x, eps, t, low_res=None, z=None):
+    def forward(self, x, eps, t, low_res=None, z=None, y=None):
         # Predict noise
         x_t = self.compute_noisy_input(x, eps, t)
-        return self.decoder(x_t, t, low_res=low_res, z=z)
+        return self.decoder(x_t, t, low_res=low_res, z=z, y=y)

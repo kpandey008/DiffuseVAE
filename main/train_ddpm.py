@@ -51,17 +51,19 @@ def train(config):
     # Use the superres model for conditional training
     decoder_cls = UNetModel if ddpm_type == "uncond" else SuperResModel
     decoder = decoder_cls(
+        image_size=image_size,
         in_channels=config.data.n_channels,
         model_channels=config.model.dim,
         out_channels=3,
         num_res_blocks=config.model.n_residual,
         attention_resolutions=attn_resolutions,
-        channel_mult=dim_mults,
-        use_checkpoint=False,
         dropout=config.model.dropout,
+        channel_mult=dim_mults,
+        num_classes=dataset.NUM_CLASSES,
+        use_checkpoint=False,
         num_heads=config.model.n_heads,
         z_dim=config.training.z_dim,
-        use_scale_shift_norm=config.training.z_cond,
+        use_scale_shift_norm=config.training.use_scale_shift_norm,
         use_z=config.training.z_cond,
     )
 
@@ -83,23 +85,27 @@ def train(config):
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
     )
-    vae = VAE.load_from_checkpoint(
-        config.training.vae_chkpt_path,
-        input_res=image_size,
-    )
-    vae.eval()
 
-    for p in vae.parameters():
-        p.requires_grad = False
+    vae = None
+    if ddpm_type != "uncond":
+        vae = VAE.load_from_checkpoint(
+            config.training.vae_chkpt_path,
+            input_res=image_size,
+        )
+        vae.eval()
+
+        for p in vae.parameters():
+            p.requires_grad = False
 
     assert isinstance(online_ddpm, ddpm_cls)
     assert isinstance(target_ddpm, ddpm_cls)
     logger.info(f"Using DDPM with type: {ddpm_cls} and data norm: {config.data.norm}")
+    logger.info(f"UNet backbone: {decoder_cls}")
 
     ddpm_wrapper = DDPMWrapper(
         online_ddpm,
         target_ddpm,
-        vae,
+        vae=vae,
         lr=lr,
         cfd_rate=config.training.cfd_rate,
         n_anneal_steps=config.training.n_anneal_steps,

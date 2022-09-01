@@ -12,7 +12,7 @@ class DDPMWrapper(pl.LightningModule):
         self,
         online_network,
         target_network,
-        vae,
+        vae=None,
         lr=2e-5,
         cfd_rate=0.0,
         n_anneal_steps=0,
@@ -131,7 +131,7 @@ class DDPMWrapper(pl.LightningModule):
         cond = None
         z = None
         if self.conditional:
-            x = batch
+            x, labels = batch
             with torch.no_grad():
                 mu, logvar = self.vae.encode(x * 0.5 + 0.5)
                 z = self.vae.reparameterize(mu, logvar)
@@ -143,7 +143,7 @@ class DDPMWrapper(pl.LightningModule):
                 cond = torch.zeros_like(x)
                 z = torch.zeros_like(z)
         else:
-            x = batch
+            x, labels = batch
 
         # Sample timepoints
         t = torch.randint(
@@ -155,7 +155,7 @@ class DDPMWrapper(pl.LightningModule):
 
         # Predict noise
         eps_pred = self.online_network(
-            x, eps, t, low_res=cond, z=z.squeeze() if self.z_cond else None
+            x, eps, t, low_res=cond, y=labels, z=z.squeeze() if self.z_cond else None
         )
 
         # Compute loss

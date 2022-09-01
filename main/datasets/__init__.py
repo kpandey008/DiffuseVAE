@@ -4,3 +4,4 @@ from .cifar10 import CIFAR10Dataset
 from .afhq import AFHQv2Dataset
 from .ffhq import FFHQLmdbDataset, FFHQDataset
 from .celebahq import CelebAHQDataset
+from .imagenet64 import ImageNet64Dataset

@@ -13,6 +13,7 @@ from datasets import (
     CelebAMaskHQDataset,
     CIFAR10Dataset,
     FFHQDataset,
+    ImageNet64Dataset,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,17 @@ def get_dataset(name, root, image_size, norm=True, flip=False, **kwargs):
         if flip:
             t_list.append(T.RandomHorizontalFlip())
         dataset = CIFAR10Dataset(
+            root,
+            transform=None if t_list == [] else T.Compose(t_list),
+            norm=norm,
+            **kwargs,
+        )
+    elif name == "imagenet64":
+        assert image_size == 64
+        t_list = []
+        if flip:
+            t_list.append(T.RandomHorizontalFlip())
+        dataset = ImageNet64Dataset(
             root,
             transform=None if t_list == [] else T.Compose(t_list),
             norm=norm,

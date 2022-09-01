@@ -24,6 +24,7 @@ ddpm:
     fp16: False
     use_ema: True
     z_cond: False
+    use_scale_shift_norm: False
     z_dim: 512
     type: 'form1'
     ema_decay: 0.9999
