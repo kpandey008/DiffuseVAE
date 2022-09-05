@@ -18,7 +18,7 @@ python main/train_ddpm.py +dataset=cifar10/train \
                      dataset.ddpm.training.vae_chkpt_path=\'/data1/kushagrap20/diffusevae_rework/cifar10/vae-cifar10-epoch=500-train_loss=0.00.ckpt\' \
                      dataset.ddpm.training.device=\'gpu:0,1,2,3\' \
                      dataset.ddpm.training.results_dir=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1_form2/\' \
-                     dataset.ddpm.training.restore_path=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1_form2/checkpoints/ddpmrepro-cifar10_reprotry1_form2-epoch=1007-loss=0.0165.ckpt\' \
+                     dataset.ddpm.training.restore_path=\'/data1/kushagrap20/diffusevae_cifar10_reprotry1_form2/checkpoints/ddpmrepro-cifar10_reprotry1_form2-epoch=2350-loss=0.0278.ckpt\' \
                      dataset.ddpm.training.workers=1 \
                      dataset.ddpm.training.chkpt_prefix=\'cifar10_reprotry1_form2\'
 
