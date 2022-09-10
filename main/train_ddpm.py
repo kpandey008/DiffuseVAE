@@ -83,14 +83,14 @@ def train(config):
         beta_2=config.model.beta2,
         T=config.model.n_timesteps,
     )
-    vae = VAE.load_from_checkpoint(
-        config.training.vae_chkpt_path,
-        input_res=image_size,
-    )
-    vae.eval()
 
-    for p in vae.parameters():
-        p.requires_grad = False
+    if ddpm_type == "uncond":
+        vae = None
+    else:
+        vae = VAE.load_from_checkpoint(config.training.vae_chkpt_path)
+        vae.eval()
+        for p in vae.parameters():
+            p.requires_grad = False
 
     assert isinstance(online_ddpm, ddpm_cls)
     assert isinstance(target_ddpm, ddpm_cls)
@@ -99,7 +99,7 @@ def train(config):
     ddpm_wrapper = DDPMWrapper(
         online_ddpm,
         target_ddpm,
-        vae,
+        vae=vae,
         lr=lr,
         cfd_rate=config.training.cfd_rate,
         n_anneal_steps=config.training.n_anneal_steps,

@@ -12,7 +12,7 @@ class DDPMWrapper(pl.LightningModule):
         self,
         online_network,
         target_network,
-        vae,
+        vae=None,
         lr=2e-5,
         cfd_rate=0.0,
         n_anneal_steps=0,
